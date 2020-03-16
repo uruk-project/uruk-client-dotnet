@@ -44,9 +44,6 @@ jobs:
       - name: Restore Tool
         if: matrix.is-main
         run: dotnet tool restore
-      - name: Lint
-        if: matrix.is-main
-        run: dotnet format --check --dry-run
       - name: Build
         run: dotnet build -c Debug
       - name: Test
@@ -121,7 +118,7 @@ jobs:
           dotnet-version: ${{ matrix.dotnet-sdk-version }}
       - name: Build
         run: |
-          dotnet publish ./samples/UrukClientSample.csproj  -c Release -r ${{ matrix.rid }} /p\:Version=${{ steps.get_release_info.outputs.version }} /p\:PublishSingleFile=true /p\:PublishTrimmed=true -o ./${{ matrix.rid }}
+          dotnet publish ./samples/Uruk.Client.Sample/Uruk.Client.Sample.csproj  -c Release -r ${{ matrix.rid }} /p\:Version=${{ steps.get_release_info.outputs.version }} /p\:PublishSingleFile=true /p\:PublishTrimmed=true -o ./${{ matrix.rid }}
           zip -r ${{ matrix.rid }} ./${{ matrix.rid }}
       - name: Upload Release Asset
         id: upload-release-asset
