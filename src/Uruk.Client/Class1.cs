@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace UrukClient
+namespace Uruk.Client
 {
     public class Class1
     {

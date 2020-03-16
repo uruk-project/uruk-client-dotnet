@@ -1,7 +1,7 @@
 using System;
 using Xunit;
 
-namespace UrukClient.Tests
+namespace Uruk.Client.Tests
 {
     public class UnitTest1
     {

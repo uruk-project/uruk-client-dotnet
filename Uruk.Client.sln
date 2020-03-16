@@ -3,17 +3,17 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29728.190
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UrukClientSample", "samples\UrukClientSample\UrukClientSample.csproj", "{8DB40411-A052-4BFE-A325-4C8FD14E3595}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Uruk.Client.Sample", "samples\Uruk.Client.Sample\Uruk.Client.Sample.csproj", "{8DB40411-A052-4BFE-A325-4C8FD14E3595}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{B65C3D6C-3F32-4F8D-81B8-FECCAF191F0C}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{DFD345D7-349B-4C89-BD50-27B27BF92FCD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UrukClient.Tests", "test\UrukClient.Tests\UrukClient.Tests.csproj", "{BA6E3E24-5A7F-426C-A618-BA56A33B8CB0}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Uruk.Client.Tests", "test\Uruk.Client.Tests\Uruk.Client.Tests.csproj", "{BA6E3E24-5A7F-426C-A618-BA56A33B8CB0}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{D5D0CA32-F92B-4BF7-8113-5138C29010D4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UrukClient", "src\UrukClient\UrukClient.csproj", "{0BE36047-0DF4-4362-A058-DC3F0D1E397B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Uruk.Client", "src\Uruk.Client\Uruk.Client.csproj", "{0BE36047-0DF4-4362-A058-DC3F0D1E397B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
