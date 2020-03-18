@@ -128,26 +128,42 @@ namespace Uruk.Client
                     switch (propertyName)
                     {
                         case "err":
-                            if (reader.Read() && reader.TokenType == JsonTokenType.String)
+                            if (reader.Read())
                             {
-                                err = reader.GetString();
-                                if (description != null)
+                                if (reader.TokenType == JsonTokenType.String)
                                 {
-                                    return EventTransmissionResult.Error(err, description);
+                                    err = reader.GetString();
+                                    if (description != null)
+                                    {
+                                        return EventTransmissionResult.Error(err, description);
+                                    }
+                                    continue;
                                 }
-                                continue;
+                                else
+                                {
+                                    return EventTransmissionResult.Error("parsing_error", "Error occurred during error message parsing: property 'err' must be of type 'string'.");
+                                }
                             }
+
                             break;
                         case "description":
-                            if (reader.Read() && reader.TokenType == JsonTokenType.String)
+                            if (reader.Read())
                             {
-                                description = reader.GetString();
-                                if (err != null)
+                                if (reader.TokenType == JsonTokenType.String)
                                 {
-                                    return EventTransmissionResult.Error(err, description);
+                                    description = reader.GetString();
+                                    if (err != null)
+                                    {
+                                        return EventTransmissionResult.Error(err, description);
+                                    }
+                                    continue;
                                 }
-                                continue;
+                                else
+                                {
+                                    return EventTransmissionResult.Error("parsing_error", "Error occurred during error message parsing: property 'description' must be of type 'string'.");
+                                }
                             }
+
                             break;
                         default:
                             // Try to skip the 
@@ -162,11 +178,11 @@ namespace Uruk.Client
                 }
                 else
                 {
-                    return EventTransmissionResult.Error("parsing_error", $"Error occurred during error message parsing: missing property 'err'.");
+                    return EventTransmissionResult.Error("parsing_error", "Error occurred during error message parsing: missing property 'err'.");
                 }
             }
 
-            return EventTransmissionResult.Error("parsing_error", $"Error occurred during error message parsing: invalid JSON." +
+            return EventTransmissionResult.Error("parsing_error", "Error occurred during error message parsing: invalid JSON." +
                 Environment.NewLine + "The error message is:" +
                 Environment.NewLine + Encoding.UTF8.GetString(errorMessage));
         }
