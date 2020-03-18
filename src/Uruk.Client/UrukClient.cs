@@ -110,7 +110,8 @@ namespace Uruk.Client
             var errorMessage = await response.Content.ReadAsByteArrayAsync();
             if (errorMessage == null)
             {
-                return EventTransmissionResult.Error();
+                // This should never occur.
+                throw new InvalidOperationException();
             }
 
             return ReadErrorMessage(errorMessage);

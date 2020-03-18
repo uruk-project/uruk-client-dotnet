@@ -72,10 +72,30 @@ namespace Uruk.Client.Tests
         }
 
         [Theory]
+        [InlineData("{\"err\":\"test_error\"}")]
+        public async Task SendAsync_NotAcceptedWithError_ErrorWithoutDescription(string jsonError)
+        {
+            var message = new HttpResponseMessage(HttpStatusCode.BadRequest);
+            message.Content = new StringContent(jsonError);
+            var httpClient = new HttpClient(new TestHttpMessageHandler(message));
+            var client = new UrukClient("https://uruk.example.com", httpClient);
+            SecurityEventTokenDescriptor descriptor = CreateDescriptor();
+
+            var response = await client.SendAsync(descriptor);
+
+            Assert.Equal(EventTransmissionStatus.Error, response.Status);
+            Assert.NotNull(response.ErrorMessage);
+            Assert.Equal("test_error", response.ErrorMessage.Error);
+            Assert.Null(response.ErrorMessage.Description);
+            Assert.Null(response.Exception);
+        }
+
+        [Theory]
         [InlineData("{\"err\":123,\"description\":\"Test description\"}", "Error occurred during error message parsing: property 'err' must be of type 'string'.")]
         [InlineData("{\"err\":\"test_error\",\"description\":123}", "Error occurred during error message parsing: property 'description' must be of type 'string'.")]
         [InlineData("{\"description\":\"Test description\"}", "Error occurred during error message parsing: missing property 'err'.")]
         [InlineData("{}", "Error occurred during error message parsing: missing property 'err'.")]
+        [InlineData("[\"hello\",\"world\"]", "Error occurred during error message parsing: invalid JSON.\nThe error message is:\n[\"hello\",\"world\"]")]
         public async Task SendAsync_NotAcceptedWithUnparsableError_Error(string errorJson, string expectedMessage)
         {
             expectedMessage = expectedMessage.Replace("\n", Environment.NewLine);
@@ -98,6 +118,24 @@ namespace Uruk.Client.Tests
         public async Task SendAsync_NotAcceptedWithInvalidJson_Error()
         {
             string errorJson = "{\"err\":";
+            var message = new HttpResponseMessage(HttpStatusCode.BadRequest);
+            message.Content = new StringContent(errorJson);
+            var httpClient = new HttpClient(new TestHttpMessageHandler(message));
+            var client = new UrukClient("https://uruk.example.com", httpClient);
+            SecurityEventTokenDescriptor descriptor = CreateDescriptor();
+
+            var response = await client.SendAsync(descriptor);
+
+            Assert.Equal(EventTransmissionStatus.Error, response.Status);
+            Assert.Null(response.ErrorMessage);
+            Assert.NotNull(response.Exception);
+            Assert.IsAssignableFrom<JsonException>(response.Exception);
+        }
+
+        [Fact]
+        public async Task SendAsync_NotAcceptedNoError_Null()
+        {
+            string errorJson = null;
             var message = new HttpResponseMessage(HttpStatusCode.BadRequest);
             message.Content = new StringContent(errorJson);
             var httpClient = new HttpClient(new TestHttpMessageHandler(message));

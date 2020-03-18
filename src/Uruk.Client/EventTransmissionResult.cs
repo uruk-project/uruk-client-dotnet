@@ -15,11 +15,6 @@ namespace Uruk.Client
             return new EventTransmissionResult { Status = EventTransmissionStatus.Success };
         }
 
-        public static EventTransmissionResult Error()
-        {
-            return new EventTransmissionResult { Status = EventTransmissionStatus.Error };
-        }
-
         public static EventTransmissionResult Error(Exception exception)
         {
             return new EventTransmissionResult { Status = EventTransmissionStatus.Error, Exception = exception };
