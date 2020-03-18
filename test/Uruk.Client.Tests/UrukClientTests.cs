@@ -133,24 +133,6 @@ namespace Uruk.Client.Tests
         }
 
         [Fact]
-        public async Task SendAsync_NotAcceptedNoError_Null()
-        {
-            string errorJson = null;
-            var message = new HttpResponseMessage(HttpStatusCode.BadRequest);
-            message.Content = new StringContent(errorJson);
-            var httpClient = new HttpClient(new TestHttpMessageHandler(message));
-            var client = new UrukClient("https://uruk.example.com", httpClient);
-            SecurityEventTokenDescriptor descriptor = CreateDescriptor();
-
-            var response = await client.SendAsync(descriptor);
-
-            Assert.Equal(EventTransmissionStatus.Error, response.Status);
-            Assert.Null(response.ErrorMessage);
-            Assert.NotNull(response.Exception);
-            Assert.IsAssignableFrom<JsonException>(response.Exception);
-        }
-
-        [Fact]
         public async Task SendAsync_NotAcceptedWithoutError_NoError()
         {
             var message = new HttpResponseMessage(HttpStatusCode.BadRequest);
