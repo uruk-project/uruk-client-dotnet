@@ -67,6 +67,7 @@ namespace Uruk.Client
             _writer.WriteToken(securityEventToken, bufferWriter);
 
 #if NETSTANDARD2_0
+            // netstandard 2.0 does not support Memory<T>
             return SendAsync(bufferWriter.Buffer, bufferWriter.Index, cancellationToken);
 #else
             return SendAsync(bufferWriter.WrittenMemory, cancellationToken);

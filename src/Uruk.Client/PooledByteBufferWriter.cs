@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 
 namespace Uruk.Client
 {
+#if NETSTANDARD2_0
     /// <summary>
     /// Represents an implementation of <see cref="IBufferWriter{T}" /> where the memory owner is a <see cref="ArrayPool{T}" /> of bytes.
     /// </summary>
@@ -179,4 +180,5 @@ namespace Uruk.Client
             Debug.Assert(_rentedBuffer.Length - _index >= sizeHint);
         }
     }
+#endif
 }
