@@ -170,8 +170,6 @@ namespace Uruk.Client
                     }
                     else
                     {
-                    }
-                    {
                         return EventTransmissionResult.Error("parsing_error", "Error occurred during error message parsing: missing property 'err'.");
                     }
                 }
