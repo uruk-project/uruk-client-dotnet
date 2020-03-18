@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using JsonWebToken;
@@ -97,7 +98,6 @@ namespace Uruk.Client.Tests
         public async Task SendAsync_NotAcceptedWithInvalidJson_Error()
         {
             string errorJson = "{\"err\":";
-            string expectedMessage = null;
             var message = new HttpResponseMessage(HttpStatusCode.BadRequest);
             message.Content = new StringContent(errorJson);
             var httpClient = new HttpClient(new TestHttpMessageHandler(message));
@@ -107,10 +107,9 @@ namespace Uruk.Client.Tests
             var response = await client.SendAsync(descriptor);
 
             Assert.Equal(EventTransmissionStatus.Error, response.Status);
-            Assert.NotNull(response.ErrorMessage);
-            Assert.Equal("parsing_error", response.ErrorMessage.Error);
-            Assert.Equal(expectedMessage, response.ErrorMessage.Description);
-            Assert.Null(response.Exception);
+            Assert.Null(response.ErrorMessage);
+            Assert.NotNull(response.Exception);
+            Assert.IsAssignableFrom<JsonException>(response.Exception);
         }
 
         [Fact]

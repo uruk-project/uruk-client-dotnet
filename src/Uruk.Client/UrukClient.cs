@@ -119,57 +119,66 @@ namespace Uruk.Client
         private static EventTransmissionResult ReadErrorMessage(byte[] errorMessage)
         {
             Utf8JsonReader reader = new Utf8JsonReader(errorMessage);
-            if (reader.Read() && reader.TokenType == JsonTokenType.StartObject)
+            try
             {
-                string? err = null;
-                string? description = null;
-                while (reader.Read() && reader.TokenType == JsonTokenType.PropertyName)
+                if (reader.Read() && reader.TokenType == JsonTokenType.StartObject)
                 {
-                    var propertyName = reader.GetString();
-                    switch (propertyName)
+                    string? err = null;
+                    string? description = null;
+                    while (reader.Read() && reader.TokenType == JsonTokenType.PropertyName)
                     {
-                        case "err":
-                            if (reader.Read() && reader.TokenType == JsonTokenType.String)
-                            {
-                                err = reader.GetString();
-                                if (description != null)
+                        var propertyName = reader.GetString();
+                        switch (propertyName)
+                        {
+                            case "err":
+                                if (reader.Read() && reader.TokenType == JsonTokenType.String)
                                 {
-                                    return EventTransmissionResult.Error(err, description);
-                                }
-                                continue;
-                            }
-
-                            return EventTransmissionResult.Error("parsing_error", "Error occurred during error message parsing: property 'err' must be of type 'string'.");
-                     
-                        case "description":
-                            if (reader.Read() && reader.TokenType == JsonTokenType.String)
-                            {
-                                description = reader.GetString();
-                                if (err != null)
-                                {
-                                    return EventTransmissionResult.Error(err, description);
+                                    err = reader.GetString();
+                                    if (description != null)
+                                    {
+                                        return EventTransmissionResult.Error(err, description);
+                                    }
+                                    continue;
                                 }
 
-                                continue;
-                            }
+                                return EventTransmissionResult.Error("parsing_error", "Error occurred during error message parsing: property 'err' must be of type 'string'.");
 
-                            return EventTransmissionResult.Error("parsing_error", "Error occurred during error message parsing: property 'description' must be of type 'string'.");
-                  
-                        default:
-                            // Skip the unattended properties
-                            reader.Skip();
-                            continue;
+                            case "description":
+                                if (reader.Read() && reader.TokenType == JsonTokenType.String)
+                                {
+                                    description = reader.GetString();
+                                    if (err != null)
+                                    {
+                                        return EventTransmissionResult.Error(err, description);
+                                    }
+
+                                    continue;
+                                }
+
+                                return EventTransmissionResult.Error("parsing_error", "Error occurred during error message parsing: property 'description' must be of type 'string'.");
+
+                            default:
+                                // Skip the unattended properties
+                                reader.Skip();
+                                continue;
+                        }
+                    }
+
+                    if (err != null)
+                    {
+                        return EventTransmissionResult.Error(err, description);
+                    }
+                    else
+                    {
+                    }
+                    {
+                        return EventTransmissionResult.Error("parsing_error", "Error occurred during error message parsing: missing property 'err'.");
                     }
                 }
-
-                if (err != null)
-                {
-                    return EventTransmissionResult.Error(err, description);
-                }
-                else
-                {
-                    return EventTransmissionResult.Error("parsing_error", "Error occurred during error message parsing: missing property 'err'.");
-                }
+            }
+            catch (JsonException e)
+            {
+                return EventTransmissionResult.Error(e);
             }
 
             return EventTransmissionResult.Error("parsing_error", "Error occurred during error message parsing: invalid JSON." +
