@@ -17,11 +17,21 @@ namespace Uruk.Client.Tests
         {
             Assert.Throws<ArgumentNullException>(() => new UrukClient((IOptions<EventTransmissionOptions>)null, new TestHttpClientFactory()));
             Assert.Throws<ArgumentNullException>(() => new UrukClient(Options.Create(new EventTransmissionOptions()), new TestHttpClientFactory()));
+            Assert.Throws<ArgumentNullException>(() => new UrukClient(Options.Create(new EventTransmissionOptions { DeliveryUri = "https://uruk.example.com" }), null));
             Assert.Throws<ArgumentNullException>(() => new UrukClient(null));
             Assert.Throws<ArgumentNullException>(() => new UrukClient((string)null, new TestHttpClientFactory()));
             Assert.Throws<ArgumentNullException>(() => new UrukClient("https://uruk.example.com", (IHttpClientFactory)null));
             Assert.Throws<ArgumentNullException>(() => new UrukClient(null, new HttpClient()));
             Assert.Throws<ArgumentNullException>(() => new UrukClient("https://uruk.example.com", (HttpClient)null));
+        }
+
+        [Fact]
+        public void Ctor_DoNotThrowsException()
+        {
+            new UrukClient(Options.Create(new EventTransmissionOptions { DeliveryUri = "https://uruk.example.com" }), new TestHttpClientFactory());
+            new UrukClient("https://uruk.example.com");
+            new UrukClient("https://uruk.example.com", new TestHttpClientFactory());
+            new UrukClient("https://uruk.example.com", new HttpClient());
         }
 
         [Fact]
@@ -59,12 +69,35 @@ namespace Uruk.Client.Tests
             Assert.Equal("Test description", response.ErrorMessage.Description);
             Assert.Null(response.Exception);
         }
-        
+
         [Theory]
         [InlineData("{\"err\":123,\"description\":\"Test description\"}", "Error occurred during error message parsing: property 'err' must be of type 'string'.")]
         [InlineData("{\"err\":\"test_error\",\"description\":123}", "Error occurred during error message parsing: property 'description' must be of type 'string'.")]
+        [InlineData("{\"description\":\"Test description\"}", "Error occurred during error message parsing: missing property 'err'.")]
+        [InlineData("{}", "Error occurred during error message parsing: missing property 'err'.")]
         public async Task SendAsync_NotAcceptedWithUnparsableError_Error(string errorJson, string expectedMessage)
         {
+            expectedMessage = expectedMessage.Replace("\n", Environment.NewLine);
+            var message = new HttpResponseMessage(HttpStatusCode.BadRequest);
+            message.Content = new StringContent(errorJson);
+            var httpClient = new HttpClient(new TestHttpMessageHandler(message));
+            var client = new UrukClient("https://uruk.example.com", httpClient);
+            SecurityEventTokenDescriptor descriptor = CreateDescriptor();
+
+            var response = await client.SendAsync(descriptor);
+
+            Assert.Equal(EventTransmissionStatus.Error, response.Status);
+            Assert.NotNull(response.ErrorMessage);
+            Assert.Equal("parsing_error", response.ErrorMessage.Error);
+            Assert.Equal(expectedMessage, response.ErrorMessage.Description);
+            Assert.Null(response.Exception);
+        }
+
+        [Fact]
+        public async Task SendAsync_NotAcceptedWithInvalidJson_Error()
+        {
+            string errorJson = "{\"err\":";
+            string expectedMessage = null;
             var message = new HttpResponseMessage(HttpStatusCode.BadRequest);
             message.Content = new StringContent(errorJson);
             var httpClient = new HttpClient(new TestHttpMessageHandler(message));

@@ -128,45 +128,34 @@ namespace Uruk.Client
                     switch (propertyName)
                     {
                         case "err":
-                            if (reader.Read())
+                            if (reader.Read() && reader.TokenType == JsonTokenType.String)
                             {
-                                if (reader.TokenType == JsonTokenType.String)
+                                err = reader.GetString();
+                                if (description != null)
                                 {
-                                    err = reader.GetString();
-                                    if (description != null)
-                                    {
-                                        return EventTransmissionResult.Error(err, description);
-                                    }
-                                    continue;
+                                    return EventTransmissionResult.Error(err, description);
                                 }
-                                else
-                                {
-                                    return EventTransmissionResult.Error("parsing_error", "Error occurred during error message parsing: property 'err' must be of type 'string'.");
-                                }
+                                continue;
                             }
 
-                            break;
+                            return EventTransmissionResult.Error("parsing_error", "Error occurred during error message parsing: property 'err' must be of type 'string'.");
+                     
                         case "description":
-                            if (reader.Read())
+                            if (reader.Read() && reader.TokenType == JsonTokenType.String)
                             {
-                                if (reader.TokenType == JsonTokenType.String)
+                                description = reader.GetString();
+                                if (err != null)
                                 {
-                                    description = reader.GetString();
-                                    if (err != null)
-                                    {
-                                        return EventTransmissionResult.Error(err, description);
-                                    }
-                                    continue;
+                                    return EventTransmissionResult.Error(err, description);
                                 }
-                                else
-                                {
-                                    return EventTransmissionResult.Error("parsing_error", "Error occurred during error message parsing: property 'description' must be of type 'string'.");
-                                }
+
+                                continue;
                             }
 
-                            break;
+                            return EventTransmissionResult.Error("parsing_error", "Error occurred during error message parsing: property 'description' must be of type 'string'.");
+                  
                         default:
-                            // Try to skip the 
+                            // Skip the unattended properties
                             reader.Skip();
                             continue;
                     }
