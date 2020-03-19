@@ -1,12 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using JsonWebToken;
-using Microsoft.Extensions.Options;
 using Xunit;
 
 namespace Uruk.Client.Tests
@@ -14,38 +14,15 @@ namespace Uruk.Client.Tests
     public class UrukClientTests
     {
         [Fact]
-        public void Ctor_ThrowsException()
-        {
-            Assert.Throws<ArgumentNullException>(() => new UrukClient((IOptions<EventTransmissionOptions>)null, new TestHttpClientFactory()));
-            Assert.Throws<ArgumentNullException>(() => new UrukClient(Options.Create(new EventTransmissionOptions()), new TestHttpClientFactory()));
-            Assert.Throws<ArgumentNullException>(() => new UrukClient(Options.Create(new EventTransmissionOptions { DeliveryUri = "https://uruk.example.com" }), null));
-            Assert.Throws<ArgumentNullException>(() => new UrukClient(null));
-            Assert.Throws<ArgumentNullException>(() => new UrukClient((string)null, new TestHttpClientFactory()));
-            Assert.Throws<ArgumentNullException>(() => new UrukClient("https://uruk.example.com", (IHttpClientFactory)null));
-            Assert.Throws<ArgumentNullException>(() => new UrukClient(null, new HttpClient()));
-            Assert.Throws<ArgumentNullException>(() => new UrukClient("https://uruk.example.com", (HttpClient)null));
-        }
-
-        [Fact]
-        public void Ctor_DoNotThrowsException()
-        {
-            new UrukClient(Options.Create(new EventTransmissionOptions { DeliveryUri = "https://uruk.example.com" }), new TestHttpClientFactory());
-            new UrukClient("https://uruk.example.com");
-            new UrukClient("https://uruk.example.com", new TestHttpClientFactory());
-            new UrukClient("https://uruk.example.com", new HttpClient());
-        }
-
-        [Fact]
         public async Task SendAsync_Accepted_Success()
         {
             var httpClient = new HttpClient(new TestHttpMessageHandler(new HttpResponseMessage(HttpStatusCode.Accepted)));
-            var client = new UrukClient("https://uruk.example.com", httpClient);
-            SecurityEventTokenDescriptor descriptor = CreateDescriptor();
-
-            var response = await client.SendAsync(descriptor);
+            var request = new SecurityEventTokenPushRequest("https://uruk.example.com", CreateDescriptor());
+            var response = await httpClient.SendTokenAsync(request);
 
             Assert.Equal(EventTransmissionStatus.Success, response.Status);
-            Assert.Null(response.ErrorMessage);
+            Assert.Null(response.Error);
+            Assert.Null(response.Description);
             Assert.Null(response.Exception);
         }
 
@@ -59,15 +36,12 @@ namespace Uruk.Client.Tests
             var message = new HttpResponseMessage(HttpStatusCode.BadRequest);
             message.Content = new StringContent(jsonError);
             var httpClient = new HttpClient(new TestHttpMessageHandler(message));
-            var client = new UrukClient("https://uruk.example.com", httpClient);
-            SecurityEventTokenDescriptor descriptor = CreateDescriptor();
-
-            var response = await client.SendAsync(descriptor);
+            var request = new SecurityEventTokenPushRequest("https://uruk.example.com", CreateDescriptor());
+            var response = await httpClient.SendTokenAsync(request);
 
             Assert.Equal(EventTransmissionStatus.Error, response.Status);
-            Assert.NotNull(response.ErrorMessage);
-            Assert.Equal("test_error", response.ErrorMessage.Error);
-            Assert.Equal("Test description", response.ErrorMessage.Description);
+            Assert.Equal("test_error", response.Error);
+            Assert.Equal("Test description", response.Description);
             Assert.Null(response.Exception);
         }
 
@@ -78,15 +52,12 @@ namespace Uruk.Client.Tests
             var message = new HttpResponseMessage(HttpStatusCode.BadRequest);
             message.Content = new StringContent(jsonError);
             var httpClient = new HttpClient(new TestHttpMessageHandler(message));
-            var client = new UrukClient("https://uruk.example.com", httpClient);
-            SecurityEventTokenDescriptor descriptor = CreateDescriptor();
-
-            var response = await client.SendAsync(descriptor);
+            var request = new SecurityEventTokenPushRequest("https://uruk.example.com", CreateDescriptor());
+            var response = await httpClient.SendTokenAsync(request);
 
             Assert.Equal(EventTransmissionStatus.Error, response.Status);
-            Assert.NotNull(response.ErrorMessage);
-            Assert.Equal("test_error", response.ErrorMessage.Error);
-            Assert.Null(response.ErrorMessage.Description);
+            Assert.Equal("test_error", response.Error);
+            Assert.Null(response.Description);
             Assert.Null(response.Exception);
         }
 
@@ -96,38 +67,34 @@ namespace Uruk.Client.Tests
         [InlineData("{\"description\":\"Test description\"}", "Error occurred during error message parsing: missing property 'err'.")]
         [InlineData("{}", "Error occurred during error message parsing: missing property 'err'.")]
         [InlineData("[\"hello\",\"world\"]", "Error occurred during error message parsing: invalid JSON.\nThe error message is:\n[\"hello\",\"world\"]")]
-        public async Task SendAsync_NotAcceptedWithUnparsableError_Error(string errorJson, string expectedMessage)
+        public async Task SendAsync_NotAcceptedWithUnparsableError_Error(string jsonError, string expectedMessage)
         {
             expectedMessage = expectedMessage.Replace("\n", Environment.NewLine);
             var message = new HttpResponseMessage(HttpStatusCode.BadRequest);
-            message.Content = new StringContent(errorJson);
+            message.Content = new StringContent(jsonError);
             var httpClient = new HttpClient(new TestHttpMessageHandler(message));
-            var client = new UrukClient("https://uruk.example.com", httpClient);
-            SecurityEventTokenDescriptor descriptor = CreateDescriptor();
-
-            var response = await client.SendAsync(descriptor);
+            var request = new SecurityEventTokenPushRequest("https://uruk.example.com", CreateDescriptor());
+            var response = await httpClient.SendTokenAsync(request);
 
             Assert.Equal(EventTransmissionStatus.Error, response.Status);
-            Assert.NotNull(response.ErrorMessage);
-            Assert.Equal("parsing_error", response.ErrorMessage.Error);
-            Assert.Equal(expectedMessage, response.ErrorMessage.Description);
+            Assert.Equal("parsing_error", response.Error);
+            Assert.Equal(expectedMessage, response.Description);
             Assert.Null(response.Exception);
         }
 
         [Fact]
         public async Task SendAsync_NotAcceptedWithInvalidJson_Error()
         {
-            string errorJson = "{\"err\":";
+            string jsonError = "{\"err\":";
             var message = new HttpResponseMessage(HttpStatusCode.BadRequest);
-            message.Content = new StringContent(errorJson);
+            message.Content = new StringContent(jsonError);
             var httpClient = new HttpClient(new TestHttpMessageHandler(message));
-            var client = new UrukClient("https://uruk.example.com", httpClient);
-            SecurityEventTokenDescriptor descriptor = CreateDescriptor();
-
-            var response = await client.SendAsync(descriptor);
+            var request = new SecurityEventTokenPushRequest("https://uruk.example.com", CreateDescriptor());
+            var response = await httpClient.SendTokenAsync(request);
 
             Assert.Equal(EventTransmissionStatus.Error, response.Status);
-            Assert.Null(response.ErrorMessage);
+            Assert.Null(response.Error);
+            Assert.Null(response.Description);
             Assert.NotNull(response.Exception);
             Assert.IsAssignableFrom<JsonException>(response.Exception);
         }
@@ -136,70 +103,94 @@ namespace Uruk.Client.Tests
         public async Task SendAsync_NotAcceptedWithoutError_NoError()
         {
             var message = new HttpResponseMessage(HttpStatusCode.BadRequest);
-            message.Content = new StringContent("{\"errrrrr\":\"test_error\",\"description\":\"Test description\"}");
+            var jsonError = "{\"errrrrr\":\"test_error\",\"description\":\"Test description\"}";
+            message.Content = new StringContent(jsonError);
             var httpClient = new HttpClient(new TestHttpMessageHandler(message));
-            var client = new UrukClient("https://uruk.example.com", httpClient);
-            SecurityEventTokenDescriptor descriptor = CreateDescriptor();
-
-            var response = await client.SendAsync(descriptor);
+            var request = new SecurityEventTokenPushRequest("https://uruk.example.com", CreateDescriptor());
+            var response = await httpClient.SendTokenAsync(request);
 
             Assert.Equal(EventTransmissionStatus.Error, response.Status);
-            Assert.NotNull(response.ErrorMessage);
-            Assert.Equal("parsing_error", response.ErrorMessage.Error);
-            Assert.Equal("Error occurred during error message parsing: missing property 'err'.", response.ErrorMessage.Description);
+            Assert.Equal("parsing_error", response.Error);
+            Assert.Equal("Error occurred during error message parsing: missing property 'err'.", response.Description);
             Assert.Null(response.Exception);
         }
 
-        [Fact]
-        public async Task SendAsync_OperationCanceledException_CaptureException()
+        [Theory]
+        [InlineData(typeof(OperationCanceledException))]
+        [InlineData(typeof(HttpRequestException))]
+        public async Task SendAsync_OperationCanceledException_CaptureException(Type exceptionType)
         {
-            var httpClient = new HttpClient(new FailingHttpMessageHandler(new OperationCanceledException()));
-            var client = new UrukClient("https://uruk.example.com", httpClient);
-            SecurityEventTokenDescriptor descriptor = CreateDescriptor();
-
-            var response = await client.SendAsync(descriptor);
+            var httpClient = new HttpClient(new FailingHttpMessageHandler((Exception)Activator.CreateInstance(exceptionType)));
+            var request = new SecurityEventTokenPushRequest("https://uruk.example.com", CreateDescriptor());
+            var response = await httpClient.SendTokenAsync(request);
 
             Assert.Equal(EventTransmissionStatus.Error, response.Status);
-            Assert.Null(response.ErrorMessage);
+            Assert.Null(response.Error);
+            Assert.Null(response.Description);
             Assert.NotNull(response.Exception);
-            Assert.IsType<OperationCanceledException>(response.Exception);
+            var aggregateException = Assert.IsType<AggregateException>(response.Exception);
+            Assert.Equal(2, aggregateException.InnerExceptions.Count);
+            Assert.IsType(exceptionType, aggregateException.InnerExceptions[0]);
+            Assert.IsType(exceptionType, aggregateException.InnerExceptions[1]);
         }
-
+        
         [Fact]
-        public async Task SendAsync_HttpRequestdException_CaptureException()
-        {
-            var httpClient = new HttpClient(new FailingHttpMessageHandler(new HttpRequestException()));
-            var client = new UrukClient("https://uruk.example.com", httpClient);
-            SecurityEventTokenDescriptor descriptor = CreateDescriptor();
-
-            var response = await client.SendAsync(descriptor);
-
-            Assert.Equal(EventTransmissionStatus.Error, response.Status);
-            Assert.Null(response.ErrorMessage);
-            Assert.NotNull(response.Exception);
-            Assert.IsType<HttpRequestException>(response.Exception);
-        }
-
-        [Fact]
-        public async Task SendAsync_UnmanagedException_DoNotCaptureException()
-        {
-            var httpClient = new HttpClient(new FailingHttpMessageHandler(new InvalidOperationException()));
-            var client = new UrukClient("https://uruk.example.com", httpClient);
-            SecurityEventTokenDescriptor descriptor = CreateDescriptor();
-
-            await Assert.ThrowsAnyAsync<Exception>(() => client.SendAsync(descriptor));
-        }
-
-        [Fact]
-        public async Task SendAsync()
+        public async Task SendAsync_Success()
         {
             var httpClient = new HttpClient(new TestHttpMessageHandler(new HttpResponseMessage(HttpStatusCode.Accepted)));
-            var client = new UrukClient("https://uruk.example.com", httpClient);
-            SecurityEventTokenDescriptor descriptor = CreateDescriptor();
-
-            var response = await client.SendAsync(descriptor);
+            var request = new SecurityEventTokenPushRequest("https://uruk.example.com", CreateDescriptor());
+            var response = await httpClient.SendTokenAsync(request);
 
             Assert.Equal(EventTransmissionStatus.Success, response.Status);
+        }
+
+        [Theory]
+        [InlineData(typeof(HttpRequestException))]
+        [InlineData(typeof(OperationCanceledException))]
+        public async Task SendAsync_Retry_Success(Type exceptionType)
+        {
+            var response1 = new HttpResponseMessage { Content = new FailingHttpContent(exceptionType) };
+            var httpClient = new HttpClient(new TestHttpMessageHandler(response1, new HttpResponseMessage(HttpStatusCode.Accepted)));
+            var request = new SecurityEventTokenPushRequest("https://uruk.example.com", CreateDescriptor());
+            var response = await httpClient.SendTokenAsync(request);
+
+            Assert.Equal(EventTransmissionStatus.Success, response.Status);
+        }
+
+        [Theory]
+        [InlineData(typeof(HttpRequestException))]
+        [InlineData(typeof(OperationCanceledException))]
+        public async Task SendAsync_Retry_Fail(Type exceptionType)
+        {
+            var response1 = new HttpResponseMessage { Content = new FailingHttpContent(exceptionType) };
+            var httpClient = new HttpClient(new TestHttpMessageHandler(response1, response1));
+            var request = new SecurityEventTokenPushRequest("https://uruk.example.com", CreateDescriptor());
+            var response = await httpClient.SendTokenAsync(request);
+      
+            Assert.Equal(EventTransmissionStatus.Error, response.Status);
+            Assert.Null(response.Error);
+            Assert.Null(response.Description);
+            Assert.NotNull(response.Exception);
+            var aggregateException = Assert.IsType<AggregateException>(response.Exception);
+            Assert.Equal(2, aggregateException.InnerExceptions.Count);
+            Assert.IsType(exceptionType, aggregateException.InnerExceptions[0]);
+            Assert.IsType(exceptionType, aggregateException.InnerExceptions[1]);
+        }
+
+        [Theory]
+        [InlineData(typeof(Exception))]
+        public async Task SendAsync_Exception_Fail(Type exceptionType)
+        {
+            var response1 = new HttpResponseMessage() { Content = new FailingHttpContent(exceptionType) };
+            var httpClient = new HttpClient(new TestHttpMessageHandler(response1, response1));
+            var request = new SecurityEventTokenPushRequest("https://uruk.example.com", CreateDescriptor());
+            var response = await httpClient.SendTokenAsync(request);
+
+            Assert.Equal(EventTransmissionStatus.Error, response.Status);
+            Assert.Null(response.Error);
+            Assert.Null(response.Description);
+            Assert.NotNull(response.Exception);
+            Assert.IsType(exceptionType, response.Exception);
         }
 
         private static SecurityEventTokenDescriptor CreateDescriptor()
@@ -219,38 +210,25 @@ namespace Uruk.Client.Tests
             return descriptor;
         }
 
-        private class TestHttpClientFactory : IHttpClientFactory
-        {
-            private readonly HttpClient _httpClient;
-
-            public TestHttpClientFactory()
-                : this(new HttpClient())
-            {
-            }
-
-            public TestHttpClientFactory(HttpClient httpClient)
-            {
-                _httpClient = new HttpClient();
-            }
-
-            public HttpClient CreateClient(string name)
-            {
-                return _httpClient;
-            }
-        }
-
         private class TestHttpMessageHandler : HttpMessageHandler
         {
-            private readonly HttpResponseMessage _expectedResponse;
+            private readonly HttpResponseMessage[] _expectedResponse;
+            private int _count = 0;
 
-            public TestHttpMessageHandler(HttpResponseMessage expectedResponse)
+            public TestHttpMessageHandler(params HttpResponseMessage[] expectedResponse)
             {
                 _expectedResponse = expectedResponse;
             }
 
             protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
-                return Task.FromResult(_expectedResponse);
+                var response = Task.FromResult(_expectedResponse[_count]);
+                if (_count++ >= _expectedResponse.Length)
+                {
+                    _count = 0;
+                }
+
+                return response;
             }
         }
 
@@ -266,6 +244,36 @@ namespace Uruk.Client.Tests
             protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
                 throw _exception;
+            }
+
+            protected override void Dispose(bool disposing)
+            {
+                base.Dispose(disposing);
+            }
+        }
+
+        private class FailingHttpContent : HttpContent
+        {
+            private readonly Type _type;
+
+            public FailingHttpContent(Type type)
+            {
+                _type = type;
+            }
+
+            protected override Task SerializeToStreamAsync(Stream stream, TransportContext context)
+            {
+                throw (Exception)Activator.CreateInstance(_type);
+            }
+
+            protected override bool TryComputeLength(out long length)
+            {
+                length = 0;
+                return true;
+            }
+
+            protected override void Dispose(bool disposing)
+            {
             }
         }
     }
