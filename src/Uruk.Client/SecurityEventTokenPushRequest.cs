@@ -8,14 +8,12 @@ namespace Uruk.Client
     {
         private static readonly JwtWriter _writer = new JwtWriter(); 
         
-        public SecurityEventTokenPushRequest(SecurityEventTokenPushRequest other)
+        public SecurityEventTokenPushRequest(HttpRequestMessage other)
         {
             RequestUri = other.RequestUri;
             Method = other.Method;
             Content = other.Content;
             Content.Headers.ContentType = new MediaTypeHeaderValue("application/secevent+jwt");
-            Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-            Token = other.Token;
         }
 
         public SecurityEventTokenPushRequest(string requestUri, SecurityEventTokenDescriptor token)

@@ -13,11 +13,31 @@ namespace Uruk.Client.Tests
 {
     public class UrukClientTests
     {
+        private static SecurityEventTokenClient CreateClient(HttpMessageHandler handler)
+        {
+            HttpClient httpClient = new HttpClient(handler);
+            httpClient.BaseAddress = new Uri("https://uruk.example.com");
+            return new SecurityEventTokenClient(httpClient, new TestTokenSink());
+        }
+
+        private class TestTokenSink : ITokenSink
+        {
+            public Task Flush(ISecurityEventTokenClient client, CancellationToken cancellationToken)
+            {
+                throw new NotImplementedException();
+            }
+
+            public bool TryWrite(Token token)
+            {
+                throw new NotImplementedException();
+            }
+        }
+
         [Fact]
         public async Task SendAsync_Accepted_Success()
         {
-            var httpClient = new HttpClient(new TestHttpMessageHandler(new HttpResponseMessage(HttpStatusCode.Accepted)));
-            var request = new SecurityEventTokenPushRequest("https://uruk.example.com", CreateDescriptor());
+            var httpClient = CreateClient(new TestHttpMessageHandler(new HttpResponseMessage(HttpStatusCode.Accepted)));
+            var request = CreateDescriptor();
             var response = await httpClient.SendTokenAsync(request);
 
             Assert.Equal(EventTransmissionStatus.Success, response.Status);
@@ -35,8 +55,8 @@ namespace Uruk.Client.Tests
         {
             var message = new HttpResponseMessage(HttpStatusCode.BadRequest);
             message.Content = new StringContent(jsonError);
-            var httpClient = new HttpClient(new TestHttpMessageHandler(message));
-            var request = new SecurityEventTokenPushRequest("https://uruk.example.com", CreateDescriptor());
+            var httpClient = CreateClient(new TestHttpMessageHandler(message));
+            var request = CreateDescriptor();
             var response = await httpClient.SendTokenAsync(request);
 
             Assert.Equal(EventTransmissionStatus.Error, response.Status);
@@ -51,8 +71,8 @@ namespace Uruk.Client.Tests
         {
             var message = new HttpResponseMessage(HttpStatusCode.BadRequest);
             message.Content = new StringContent(jsonError);
-            var httpClient = new HttpClient(new TestHttpMessageHandler(message));
-            var request = new SecurityEventTokenPushRequest("https://uruk.example.com", CreateDescriptor());
+            var httpClient = CreateClient(new TestHttpMessageHandler(message));
+            var request = CreateDescriptor();
             var response = await httpClient.SendTokenAsync(request);
 
             Assert.Equal(EventTransmissionStatus.Error, response.Status);
@@ -72,8 +92,8 @@ namespace Uruk.Client.Tests
             expectedMessage = expectedMessage.Replace("\n", Environment.NewLine);
             var message = new HttpResponseMessage(HttpStatusCode.BadRequest);
             message.Content = new StringContent(jsonError);
-            var httpClient = new HttpClient(new TestHttpMessageHandler(message));
-            var request = new SecurityEventTokenPushRequest("https://uruk.example.com", CreateDescriptor());
+            var httpClient = CreateClient(new TestHttpMessageHandler(message));
+            var request = CreateDescriptor();
             var response = await httpClient.SendTokenAsync(request);
 
             Assert.Equal(EventTransmissionStatus.Error, response.Status);
@@ -88,8 +108,8 @@ namespace Uruk.Client.Tests
             string jsonError = "{\"err\":";
             var message = new HttpResponseMessage(HttpStatusCode.BadRequest);
             message.Content = new StringContent(jsonError);
-            var httpClient = new HttpClient(new TestHttpMessageHandler(message));
-            var request = new SecurityEventTokenPushRequest("https://uruk.example.com", CreateDescriptor());
+            var httpClient = CreateClient(new TestHttpMessageHandler(message));
+            var request = CreateDescriptor();
             var response = await httpClient.SendTokenAsync(request);
 
             Assert.Equal(EventTransmissionStatus.Error, response.Status);
@@ -105,8 +125,8 @@ namespace Uruk.Client.Tests
             var message = new HttpResponseMessage(HttpStatusCode.BadRequest);
             var jsonError = "{\"errrrrr\":\"test_error\",\"description\":\"Test description\"}";
             message.Content = new StringContent(jsonError);
-            var httpClient = new HttpClient(new TestHttpMessageHandler(message));
-            var request = new SecurityEventTokenPushRequest("https://uruk.example.com", CreateDescriptor());
+            var httpClient = CreateClient(new TestHttpMessageHandler(message));
+            var request = CreateDescriptor();
             var response = await httpClient.SendTokenAsync(request);
 
             Assert.Equal(EventTransmissionStatus.Error, response.Status);
@@ -120,8 +140,8 @@ namespace Uruk.Client.Tests
         [InlineData(typeof(HttpRequestException))]
         public async Task SendAsync_OperationCanceledException_CaptureException(Type exceptionType)
         {
-            var httpClient = new HttpClient(new FailingHttpMessageHandler((Exception)Activator.CreateInstance(exceptionType)));
-            var request = new SecurityEventTokenPushRequest("https://uruk.example.com", CreateDescriptor());
+            var httpClient = CreateClient(new FailingHttpMessageHandler((Exception)Activator.CreateInstance(exceptionType)));
+            var request = CreateDescriptor();
             var response = await httpClient.SendTokenAsync(request);
 
             Assert.Equal(EventTransmissionStatus.Error, response.Status);
@@ -133,12 +153,12 @@ namespace Uruk.Client.Tests
             Assert.IsType(exceptionType, aggregateException.InnerExceptions[0]);
             Assert.IsType(exceptionType, aggregateException.InnerExceptions[1]);
         }
-        
+
         [Fact]
         public async Task SendAsync_Success()
         {
-            var httpClient = new HttpClient(new TestHttpMessageHandler(new HttpResponseMessage(HttpStatusCode.Accepted)));
-            var request = new SecurityEventTokenPushRequest("https://uruk.example.com", CreateDescriptor());
+            var httpClient = CreateClient(new TestHttpMessageHandler(new HttpResponseMessage(HttpStatusCode.Accepted)));
+            var request = CreateDescriptor();
             var response = await httpClient.SendTokenAsync(request);
 
             Assert.Equal(EventTransmissionStatus.Success, response.Status);
@@ -150,8 +170,8 @@ namespace Uruk.Client.Tests
         public async Task SendAsync_Retry_Success(Type exceptionType)
         {
             var response1 = new HttpResponseMessage { Content = new FailingHttpContent(exceptionType) };
-            var httpClient = new HttpClient(new TestHttpMessageHandler(response1, new HttpResponseMessage(HttpStatusCode.Accepted)));
-            var request = new SecurityEventTokenPushRequest("https://uruk.example.com", CreateDescriptor());
+            var httpClient = CreateClient(new TestHttpMessageHandler(response1, new HttpResponseMessage(HttpStatusCode.Accepted)));
+            var request = CreateDescriptor();
             var response = await httpClient.SendTokenAsync(request);
 
             Assert.Equal(EventTransmissionStatus.Success, response.Status);
@@ -163,10 +183,10 @@ namespace Uruk.Client.Tests
         public async Task SendAsync_Retry_Fail(Type exceptionType)
         {
             var response1 = new HttpResponseMessage { Content = new FailingHttpContent(exceptionType) };
-            var httpClient = new HttpClient(new TestHttpMessageHandler(response1, response1));
-            var request = new SecurityEventTokenPushRequest("https://uruk.example.com", CreateDescriptor());
+            var httpClient = CreateClient(new TestHttpMessageHandler(response1, response1));
+            var request = CreateDescriptor();
             var response = await httpClient.SendTokenAsync(request);
-      
+
             Assert.Equal(EventTransmissionStatus.Error, response.Status);
             Assert.Null(response.Error);
             Assert.Null(response.Description);
@@ -182,8 +202,8 @@ namespace Uruk.Client.Tests
         public async Task SendAsync_Exception_Fail(Type exceptionType)
         {
             var response1 = new HttpResponseMessage() { Content = new FailingHttpContent(exceptionType) };
-            var httpClient = new HttpClient(new TestHttpMessageHandler(response1, response1));
-            var request = new SecurityEventTokenPushRequest("https://uruk.example.com", CreateDescriptor());
+            var httpClient = CreateClient(new TestHttpMessageHandler(response1, response1));
+            var request = CreateDescriptor();
             var response = await httpClient.SendTokenAsync(request);
 
             Assert.Equal(EventTransmissionStatus.Error, response.Status);
