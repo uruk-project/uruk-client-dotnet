@@ -13,17 +13,14 @@ namespace Uruk.Client
     internal class InMemoryTokenSink : ITokenSink
     {
         private readonly ILogger<InMemoryTokenSink> _logger;
-#if NETSTANDARD2_0 || NETSTANDARD2_1
-        private readonly BlockingCollection<Token> _channel = new BlockingCollection<Token>();
-#else
-        private readonly Channel<Token> _channel =  Channel.CreateUnbounded<Token>();
-#endif
+
         public InMemoryTokenSink(ILogger<InMemoryTokenSink> logger)
         {
             _logger = logger;
         }
 
 #if NETSTANDARD2_0 || NETSTANDARD2_1
+        private readonly BlockingCollection<Token> _channel = new BlockingCollection<Token>();
         public bool TryWrite(Token token)
         {
             return _channel.TryAdd(token);
@@ -36,13 +33,14 @@ namespace Uruk.Client
                 while (_channel.TryTake(out var token))
                 {
                     _logger.LogInformation(Encoding.UTF8.GetString(token.Value));
-                    client.SendTokenAsync(token.Value);
+                    client.SendTokenAsync(token);
                 }
-            });
+            }, TaskCreationOptions.LongRunning);
 
             return consumer;
         }
 #else
+        private readonly Channel<Token> _channel =  Channel.CreateUnbounded<Token>();
         public bool TryWrite(Token token)
         {
             return _channel.Writer.TryWrite(token);
@@ -56,12 +54,11 @@ namespace Uruk.Client
                 {
                     while (_channel.Reader.TryRead(out var token))
                     {
-                        // TODO: creates a logger message
                         _logger.LogInformation(Encoding.UTF8.GetString(token.Value));
-                        client.SendTokenAsync(token.Value);
+                        client.SendTokenAsync(token);
                     }
                 }
-            });
+            }, TaskCreationOptions.LongRunning);
 
             return consumer;
         }

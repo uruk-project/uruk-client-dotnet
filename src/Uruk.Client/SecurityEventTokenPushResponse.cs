@@ -9,11 +9,17 @@ namespace Uruk.Client
 {
     public class SecurityEventTokenPushResponse
     {
-        public SecurityEventTokenPushResponse(HttpStatusCode httpStatusCode, EventTransmissionStatus status, byte[] raw)
+        public SecurityEventTokenPushResponse(EventTransmissionStatus status, HttpStatusCode httpStatusCode, byte[] raw)
         {
             HttpStatusCode = httpStatusCode;
             Status = status;
             Raw = raw ?? throw new ArgumentNullException(nameof(raw));
+        }
+
+        public SecurityEventTokenPushResponse(EventTransmissionStatus status)
+        {
+            Status = status;
+            Raw = Array.Empty<byte>();
         }
 
         public HttpStatusCode HttpStatusCode { get; }
@@ -113,14 +119,22 @@ namespace Uruk.Client
                 Environment.NewLine + Encoding.UTF8.GetString(errorMessage));
         }
 
+        internal static SecurityEventTokenPushResponse Warning(Exception exception)
+        {
+            return new SecurityEventTokenPushResponse(EventTransmissionStatus.Warning)
+            {
+                Exception = exception
+            };
+        }
+
         public static SecurityEventTokenPushResponse Success(HttpStatusCode statusCode)
         {
-            return new SecurityEventTokenPushResponse(statusCode, EventTransmissionStatus.Success, Array.Empty<byte>());
+            return new SecurityEventTokenPushResponse(EventTransmissionStatus.Success, statusCode, Array.Empty<byte>());
         }
 
         public static SecurityEventTokenPushResponse Failure(HttpStatusCode statusCode, byte[] raw, Exception exception)
         {
-            return new SecurityEventTokenPushResponse(statusCode, EventTransmissionStatus.Error, raw)
+            return new SecurityEventTokenPushResponse(EventTransmissionStatus.Error, statusCode, raw)
             {
                 Exception = exception
             };
@@ -128,7 +142,7 @@ namespace Uruk.Client
 
         public static SecurityEventTokenPushResponse Failure(Exception exception)
         {
-            return new SecurityEventTokenPushResponse(0, EventTransmissionStatus.Error, Array.Empty<byte>())
+            return new SecurityEventTokenPushResponse(EventTransmissionStatus.Error, 0, Array.Empty<byte>())
             {
                 Exception = exception
             };
@@ -136,7 +150,7 @@ namespace Uruk.Client
 
         public static SecurityEventTokenPushResponse ErrorFailure(HttpStatusCode statusCode, byte[] raw, string error, string? description = null)
         {
-            return new SecurityEventTokenPushResponse(statusCode, EventTransmissionStatus.Error, raw)
+            return new SecurityEventTokenPushResponse(EventTransmissionStatus.Error, statusCode, raw)
             {
                 Error = error,
                 Description = description
@@ -145,7 +159,7 @@ namespace Uruk.Client
 
         public static SecurityEventTokenPushResponse Warning(HttpStatusCode statusCode, byte[] raw, string error, string? description = null)
         {
-            return new SecurityEventTokenPushResponse(statusCode, EventTransmissionStatus.Warning, raw)
+            return new SecurityEventTokenPushResponse(EventTransmissionStatus.Warning, statusCode, raw)
             {
                 Error = error,
                 Description = description

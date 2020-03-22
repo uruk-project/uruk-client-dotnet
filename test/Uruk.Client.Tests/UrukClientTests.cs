@@ -7,21 +7,29 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using JsonWebToken;
+using Microsoft.Extensions.Logging;
 using Xunit;
 
 namespace Uruk.Client.Tests
 {
     public class UrukClientTests
     {
-        private static SecurityEventTokenClient CreateClient(HttpMessageHandler handler)
+        private static SecurityEventTokenClient CreateClient(HttpMessageHandler handler, bool tokenSinkResult = true)
         {
             HttpClient httpClient = new HttpClient(handler);
             httpClient.BaseAddress = new Uri("https://uruk.example.com");
-            return new SecurityEventTokenClient(httpClient, new TestTokenSink());
+            return new SecurityEventTokenClient(httpClient, new TestTokenSink(tokenSinkResult), new TestLogger());
         }
 
         private class TestTokenSink : ITokenSink
         {
+            private readonly bool _success;
+
+            public TestTokenSink(bool success)
+            {
+                _success = success;
+            }
+
             public Task Flush(ISecurityEventTokenClient client, CancellationToken cancellationToken)
             {
                 throw new NotImplementedException();
@@ -29,7 +37,7 @@ namespace Uruk.Client.Tests
 
             public bool TryWrite(Token token)
             {
-                throw new NotImplementedException();
+                return _success;
             }
         }
 
@@ -134,26 +142,7 @@ namespace Uruk.Client.Tests
             Assert.Equal("Error occurred during error message parsing: missing property 'err'.", response.Description);
             Assert.Null(response.Exception);
         }
-
-        [Theory]
-        [InlineData(typeof(OperationCanceledException))]
-        [InlineData(typeof(HttpRequestException))]
-        public async Task SendAsync_OperationCanceledException_CaptureException(Type exceptionType)
-        {
-            var httpClient = CreateClient(new FailingHttpMessageHandler((Exception)Activator.CreateInstance(exceptionType)));
-            var request = CreateDescriptor();
-            var response = await httpClient.SendTokenAsync(request);
-
-            Assert.Equal(EventTransmissionStatus.Error, response.Status);
-            Assert.Null(response.Error);
-            Assert.Null(response.Description);
-            Assert.NotNull(response.Exception);
-            var aggregateException = Assert.IsType<AggregateException>(response.Exception);
-            Assert.Equal(2, aggregateException.InnerExceptions.Count);
-            Assert.IsType(exceptionType, aggregateException.InnerExceptions[0]);
-            Assert.IsType(exceptionType, aggregateException.InnerExceptions[1]);
-        }
-
+        
         [Fact]
         public async Task SendAsync_Success()
         {
@@ -167,23 +156,23 @@ namespace Uruk.Client.Tests
         [Theory]
         [InlineData(typeof(HttpRequestException))]
         [InlineData(typeof(OperationCanceledException))]
-        public async Task SendAsync_Retry_Success(Type exceptionType)
+        public async Task SendAsync_Retriable_WarningCaptureException(Type exceptionType)
         {
             var response1 = new HttpResponseMessage { Content = new FailingHttpContent(exceptionType) };
-            var httpClient = CreateClient(new TestHttpMessageHandler(response1, new HttpResponseMessage(HttpStatusCode.Accepted)));
+            var httpClient = CreateClient(new TestHttpMessageHandler(response1), tokenSinkResult: true);
             var request = CreateDescriptor();
             var response = await httpClient.SendTokenAsync(request);
 
-            Assert.Equal(EventTransmissionStatus.Success, response.Status);
+            Assert.Equal(EventTransmissionStatus.Warning, response.Status);
+            Assert.IsType(exceptionType, response.Exception);
         }
 
         [Theory]
-        [InlineData(typeof(HttpRequestException))]
         [InlineData(typeof(OperationCanceledException))]
-        public async Task SendAsync_Retry_Fail(Type exceptionType)
+        [InlineData(typeof(HttpRequestException))]
+        public async Task SendAsync_Retriable_ErrorCaptureException(Type exceptionType)
         {
-            var response1 = new HttpResponseMessage { Content = new FailingHttpContent(exceptionType) };
-            var httpClient = CreateClient(new TestHttpMessageHandler(response1, response1));
+            var httpClient = CreateClient(new FailingHttpMessageHandler((Exception)Activator.CreateInstance(exceptionType)), false);
             var request = CreateDescriptor();
             var response = await httpClient.SendTokenAsync(request);
 
@@ -191,10 +180,7 @@ namespace Uruk.Client.Tests
             Assert.Null(response.Error);
             Assert.Null(response.Description);
             Assert.NotNull(response.Exception);
-            var aggregateException = Assert.IsType<AggregateException>(response.Exception);
-            Assert.Equal(2, aggregateException.InnerExceptions.Count);
-            Assert.IsType(exceptionType, aggregateException.InnerExceptions[0]);
-            Assert.IsType(exceptionType, aggregateException.InnerExceptions[1]);
+            Assert.IsType(exceptionType, response.Exception);
         }
 
         [Theory]
@@ -202,7 +188,7 @@ namespace Uruk.Client.Tests
         public async Task SendAsync_Exception_Fail(Type exceptionType)
         {
             var response1 = new HttpResponseMessage() { Content = new FailingHttpContent(exceptionType) };
-            var httpClient = CreateClient(new TestHttpMessageHandler(response1, response1));
+            var httpClient = CreateClient(new TestHttpMessageHandler(response1));
             var request = CreateDescriptor();
             var response = await httpClient.SendTokenAsync(request);
 
@@ -232,22 +218,16 @@ namespace Uruk.Client.Tests
 
         private class TestHttpMessageHandler : HttpMessageHandler
         {
-            private readonly HttpResponseMessage[] _expectedResponse;
-            private int _count = 0;
+            private readonly HttpResponseMessage _expectedResponse;
 
-            public TestHttpMessageHandler(params HttpResponseMessage[] expectedResponse)
+            public TestHttpMessageHandler(HttpResponseMessage expectedResponse)
             {
                 _expectedResponse = expectedResponse;
             }
 
             protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
-                var response = Task.FromResult(_expectedResponse[_count]);
-                if (_count++ >= _expectedResponse.Length)
-                {
-                    _count = 0;
-                }
-
+                var response = Task.FromResult(_expectedResponse);
                 return response;
             }
         }
@@ -294,6 +274,28 @@ namespace Uruk.Client.Tests
 
             protected override void Dispose(bool disposing)
             {
+            }
+        }
+
+        private class TestLogger : ILogger<SecurityEventTokenClient>
+        {
+            public IDisposable BeginScope<TState>(TState state)
+            {
+                return new Scope();
+            }
+
+            public bool IsEnabled(LogLevel logLevel)
+            {
+                return false;
+            }
+
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
+            {
+            }
+
+            private class Scope : IDisposable
+            {
+                public void Dispose() { }
             }
         }
     }

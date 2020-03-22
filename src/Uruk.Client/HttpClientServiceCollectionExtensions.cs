@@ -25,10 +25,7 @@ namespace Uruk.Client
         {
             services.AddHostedService<TokenSinkBackgroundService>();
             services.TryAddSingleton<ITokenSink, InMemoryTokenSink>();
-            return services.AddHttpClient<ISecurityEventTokenClient, SecurityEventTokenClient>(client =>
-            {
-                client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-            });
+            return services.AddHttpClient<ISecurityEventTokenClient, SecurityEventTokenClient>();
         }
     }
 }
