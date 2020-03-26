@@ -8,6 +8,6 @@ namespace Uruk.Client
     {
         public Task<SecurityEventTokenPushResponse> SendTokenAsync(SecurityEventTokenDescriptor descriptor, CancellationToken cancellationToken = default);
   
-        public Task<SecurityEventTokenPushResponse> SendTokenAsync(Token token, CancellationToken cancellationToken = default);
+        public Task<SecurityEventTokenPushResponse> ResendTokenAsync(Token token, CancellationToken cancellationToken = default);
     }
 }

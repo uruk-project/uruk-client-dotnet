@@ -7,6 +7,10 @@ namespace Uruk.Client
     {
         public bool TryWrite(Token token);
 
-        public Task Flush(ISecurityEventTokenClient client, CancellationToken cancellationToken);
+        public Task Stop(CancellationToken cancellationToken);
+
+        public ValueTask<bool> WaitToReadAsync(CancellationToken cancellationToken);
+
+        public bool TryRead(out Token token);
     }
 }

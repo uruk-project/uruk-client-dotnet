@@ -1,0 +1,10 @@
+﻿{
+  "profiles": {
+    "Uruk.Client.HostedSample": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}

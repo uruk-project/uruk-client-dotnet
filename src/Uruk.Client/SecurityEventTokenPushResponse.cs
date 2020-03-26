@@ -16,13 +16,20 @@ namespace Uruk.Client
             Raw = raw ?? throw new ArgumentNullException(nameof(raw));
         }
 
+        public SecurityEventTokenPushResponse(EventTransmissionStatus status, HttpStatusCode httpStatusCode)
+        {
+            HttpStatusCode = httpStatusCode;
+            Status = status;
+            Raw = Array.Empty<byte>();
+        }
+
         public SecurityEventTokenPushResponse(EventTransmissionStatus status)
         {
             Status = status;
             Raw = Array.Empty<byte>();
         }
 
-        public HttpStatusCode HttpStatusCode { get; }
+        public HttpStatusCode? HttpStatusCode { get; }
 
         public EventTransmissionStatus Status { get; }
 
@@ -36,9 +43,14 @@ namespace Uruk.Client
 
         internal static async Task<SecurityEventTokenPushResponse> FromHttpResponseAsync(HttpResponseMessage responseMessage)
         {
-            if (responseMessage.StatusCode == HttpStatusCode.Accepted)
+            if (responseMessage.StatusCode == System.Net.HttpStatusCode.Accepted)
             {
-                return Success(HttpStatusCode.Accepted);
+                return Success(System.Net.HttpStatusCode.Accepted);
+            }
+
+            if (!string.Equals(responseMessage.Content.Headers.ContentType?.MediaType, "application/json", StringComparison.OrdinalIgnoreCase))
+            {
+                return new SecurityEventTokenPushResponse(EventTransmissionStatus.Error, responseMessage.StatusCode);
             }
 
             var errorMessage = await responseMessage.Content.ReadAsByteArrayAsync();
@@ -127,6 +139,11 @@ namespace Uruk.Client
             };
         }
 
+        internal static SecurityEventTokenPushResponse Warning(HttpStatusCode statusCode)
+        {
+            return new SecurityEventTokenPushResponse(EventTransmissionStatus.Warning, statusCode);
+        }
+
         public static SecurityEventTokenPushResponse Success(HttpStatusCode statusCode)
         {
             return new SecurityEventTokenPushResponse(EventTransmissionStatus.Success, statusCode, Array.Empty<byte>());
@@ -138,6 +155,26 @@ namespace Uruk.Client
             {
                 Exception = exception
             };
+        }
+
+        public static SecurityEventTokenPushResponse Failure(SecurityEventTokenPushResponse other)
+        {
+            if (other.HttpStatusCode.HasValue)
+            {
+                return new SecurityEventTokenPushResponse(EventTransmissionStatus.Error, other.HttpStatusCode.Value);
+            }
+            else
+            {
+                return new SecurityEventTokenPushResponse(EventTransmissionStatus.Error)
+                {
+                    Exception = other.Exception
+                };
+            }
+        }
+
+        public static SecurityEventTokenPushResponse Failure(HttpStatusCode statusCode)
+        {
+            return new SecurityEventTokenPushResponse(EventTransmissionStatus.Error, statusCode);
         }
 
         public static SecurityEventTokenPushResponse Failure(Exception exception)

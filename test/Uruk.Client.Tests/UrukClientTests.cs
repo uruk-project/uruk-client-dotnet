@@ -3,22 +3,26 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using JsonWebToken;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Xunit;
 
 namespace Uruk.Client.Tests
 {
     public class UrukClientTests
     {
-        private static SecurityEventTokenClient CreateClient(HttpMessageHandler handler, bool tokenSinkResult = true)
+        private static SecurityEventTokenClient CreateClient(HttpMessageHandler handler, bool tokenSinkResult = true, ITokenStore store = null, IHostEnvironment env = null)
         {
             HttpClient httpClient = new HttpClient(handler);
             httpClient.BaseAddress = new Uri("https://uruk.example.com");
-            return new SecurityEventTokenClient(httpClient, new TestTokenSink(tokenSinkResult), new TestLogger());
+            return new SecurityEventTokenClient(httpClient, Options.Create(new SecurityEventTokenClientOptions()), new TestTokenSink(tokenSinkResult), store ?? new TestTokenStore(), new TestLogger<SecurityEventTokenClient>(), env);
         }
 
         private class TestTokenSink : ITokenSink
@@ -30,7 +34,12 @@ namespace Uruk.Client.Tests
                 _success = success;
             }
 
-            public Task Flush(ISecurityEventTokenClient client, CancellationToken cancellationToken)
+            public Task Stop(CancellationToken cancellationToken)
+            {
+                throw new NotImplementedException();
+            }
+
+            public bool TryRead(out Token token)
             {
                 throw new NotImplementedException();
             }
@@ -38,6 +47,11 @@ namespace Uruk.Client.Tests
             public bool TryWrite(Token token)
             {
                 return _success;
+            }
+
+            public ValueTask<bool> WaitToReadAsync(CancellationToken cancellationToken)
+            {
+                throw new NotImplementedException();
             }
         }
 
@@ -70,6 +84,20 @@ namespace Uruk.Client.Tests
             Assert.Equal(EventTransmissionStatus.Error, response.Status);
             Assert.Equal("test_error", response.Error);
             Assert.Equal("Test description", response.Description);
+            Assert.Null(response.Exception);
+        }
+
+        [Fact]
+        public async Task SendAsync_NotAcceptedWithBadContentType_Error()
+        {
+            var message = new HttpResponseMessage(HttpStatusCode.BadRequest);
+            var httpClient = CreateClient(new TestHttpMessageHandler(message, setDefaultContentType: false));
+            var request = CreateDescriptor();
+            var response = await httpClient.SendTokenAsync(request);
+
+            Assert.Equal(EventTransmissionStatus.Error, response.Status);
+            Assert.Null(response.Error);
+            Assert.Null(response.Description);
             Assert.Null(response.Exception);
         }
 
@@ -142,7 +170,7 @@ namespace Uruk.Client.Tests
             Assert.Equal("Error occurred during error message parsing: missing property 'err'.", response.Description);
             Assert.Null(response.Exception);
         }
-        
+
         [Fact]
         public async Task SendAsync_Success()
         {
@@ -156,23 +184,42 @@ namespace Uruk.Client.Tests
         [Theory]
         [InlineData(typeof(HttpRequestException))]
         [InlineData(typeof(OperationCanceledException))]
-        public async Task SendAsync_Retriable_WarningCaptureException(Type exceptionType)
+        public async Task SendAsync_Retriable_Hosted_WarningCaptureException(Type exceptionType)
         {
+            var store = new TestTokenStore();
             var response1 = new HttpResponseMessage { Content = new FailingHttpContent(exceptionType) };
-            var httpClient = CreateClient(new TestHttpMessageHandler(response1), tokenSinkResult: true);
+            var httpClient = CreateClient(new TestHttpMessageHandler(response1), tokenSinkResult: true, store, new TestHostEnvironment());
             var request = CreateDescriptor();
             var response = await httpClient.SendTokenAsync(request);
 
             Assert.Equal(EventTransmissionStatus.Warning, response.Status);
             Assert.IsType(exceptionType, response.Exception);
+            Assert.Equal(1, store.RecordedCount);
+        }
+
+        [Theory]
+        [InlineData(typeof(HttpRequestException))]
+        [InlineData(typeof(OperationCanceledException))]
+        public async Task SendAsync_Retriable_NotHosted_WarningCaptureException(Type exceptionType)
+        {
+            var store = new TestTokenStore();
+            var response1 = new HttpResponseMessage { Content = new FailingHttpContent(exceptionType) };
+            var httpClient = CreateClient(new TestHttpMessageHandler(response1), tokenSinkResult: true, store);
+            var request = CreateDescriptor();
+            var response = await httpClient.SendTokenAsync(request);
+
+            Assert.Equal(EventTransmissionStatus.Error, response.Status);
+            Assert.IsType(exceptionType, response.Exception);
+            Assert.Equal(0, store.RecordedCount);
         }
 
         [Theory]
         [InlineData(typeof(OperationCanceledException))]
         [InlineData(typeof(HttpRequestException))]
-        public async Task SendAsync_Retriable_ErrorCaptureException(Type exceptionType)
+        public async Task SendAsync_Retriable_Hosted_ErrorCaptureException(Type exceptionType)
         {
-            var httpClient = CreateClient(new FailingHttpMessageHandler((Exception)Activator.CreateInstance(exceptionType)), false);
+            var store = new TestTokenStore();
+            var httpClient = CreateClient(new FailingHttpMessageHandler((Exception)Activator.CreateInstance(exceptionType)), false, store, new TestHostEnvironment());
             var request = CreateDescriptor();
             var response = await httpClient.SendTokenAsync(request);
 
@@ -181,14 +228,36 @@ namespace Uruk.Client.Tests
             Assert.Null(response.Description);
             Assert.NotNull(response.Exception);
             Assert.IsType(exceptionType, response.Exception);
+
+            Assert.Equal(1, store.RecordedCount);
+        }
+
+        [Theory]
+        [InlineData(typeof(OperationCanceledException))]
+        [InlineData(typeof(HttpRequestException))]
+        public async Task SendAsync_Retriable_NotHosted_ErrorCaptureException(Type exceptionType)
+        {
+            var store = new TestTokenStore();
+            var httpClient = CreateClient(new FailingHttpMessageHandler((Exception)Activator.CreateInstance(exceptionType)), false, store, env: null);
+            var request = CreateDescriptor();
+            var response = await httpClient.SendTokenAsync(request);
+
+            Assert.Equal(EventTransmissionStatus.Error, response.Status);
+            Assert.Null(response.Error);
+            Assert.Null(response.Description);
+            Assert.NotNull(response.Exception);
+            Assert.IsType(exceptionType, response.Exception);
+
+            Assert.Equal(0, store.RecordedCount);
         }
 
         [Theory]
         [InlineData(typeof(Exception))]
         public async Task SendAsync_Exception_Fail(Type exceptionType)
         {
+            var store = new TestTokenStore();
             var response1 = new HttpResponseMessage() { Content = new FailingHttpContent(exceptionType) };
-            var httpClient = CreateClient(new TestHttpMessageHandler(response1));
+            var httpClient = CreateClient(new TestHttpMessageHandler(response1), store: store);
             var request = CreateDescriptor();
             var response = await httpClient.SendTokenAsync(request);
 
@@ -197,6 +266,8 @@ namespace Uruk.Client.Tests
             Assert.Null(response.Description);
             Assert.NotNull(response.Exception);
             Assert.IsType(exceptionType, response.Exception);
+
+            Assert.Equal(0, store.RecordedCount);
         }
 
         private static SecurityEventTokenDescriptor CreateDescriptor()
@@ -204,7 +275,7 @@ namespace Uruk.Client.Tests
             var descriptor = new SecurityEventTokenDescriptor();
             descriptor.Type = "secevent+jwt";
             descriptor.Algorithm = SignatureAlgorithm.HmacSha256;
-            descriptor.SigningKey = new SymmetricJwk(new string('a', 128));
+            descriptor.SigningKey = new SymmetricJwk(new byte[128]);
             descriptor.Issuer = "https://client.example.com";
             descriptor.IssuedAt = DateTime.UtcNow;
             descriptor.JwtId = "4d3559ec67504aaba65d40b0363faad8";
@@ -220,9 +291,18 @@ namespace Uruk.Client.Tests
         {
             private readonly HttpResponseMessage _expectedResponse;
 
-            public TestHttpMessageHandler(HttpResponseMessage expectedResponse)
+            public TestHttpMessageHandler(HttpResponseMessage expectedResponse, bool setDefaultContentType = true)
             {
                 _expectedResponse = expectedResponse;
+                if (_expectedResponse.Content is null)
+                {
+                    _expectedResponse.Content = new StringContent("");
+                }
+
+                if (setDefaultContentType)
+                {
+                    _expectedResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+                }
             }
 
             protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -277,26 +357,57 @@ namespace Uruk.Client.Tests
             }
         }
 
-        private class TestLogger : ILogger<SecurityEventTokenClient>
+
+
+        private class TestTokenStore : ITokenStore
         {
-            public IDisposable BeginScope<TState>(TState state)
+            public int RecordedCount { get; set; }
+
+            public void DeleteRecord(Token token)
             {
-                return new Scope();
+                throw new NotImplementedException();
             }
 
-            public bool IsEnabled(LogLevel logLevel)
+            public IEnumerable<Token> GetAllTokenRecords()
             {
-                return false;
+                throw new NotImplementedException();
             }
 
-            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
+            public Task<string> RecordTokenAsync(byte[] token)
             {
+                RecordedCount++;
+                return Task.FromResult<string>(null);
             }
+        }
 
-            private class Scope : IDisposable
-            {
-                public void Dispose() { }
-            }
+        private class TestHostEnvironment : IHostEnvironment
+        {
+            public string EnvironmentName { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+            public string ApplicationName { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+            public string ContentRootPath { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+            public IFileProvider ContentRootFileProvider { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        }
+    }
+
+    internal class Scope : IDisposable
+    {
+        public void Dispose() { }
+    }
+
+    internal class TestLogger<T> : ILogger<T>
+    {
+        public IDisposable BeginScope<TState>(TState state)
+        {
+            return new Scope();
+        }
+
+        public bool IsEnabled(LogLevel logLevel)
+        {
+            return false;
+        }
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
+        {
         }
     }
 }
