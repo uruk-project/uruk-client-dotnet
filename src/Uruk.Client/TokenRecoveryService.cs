@@ -3,18 +3,21 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Uruk.Client
 {
     public class TokenRecoveryService : IHostedService, IDisposable
     {
+        private readonly SecurityEventTokenClientOptions _options;
         private readonly ILogger<TokenRecoveryService> _logger;
         private readonly ITokenStore _store;
         private readonly ITokenSink _sink;
         private Timer? _timer;
 
-        public TokenRecoveryService(ILogger<TokenRecoveryService> logger, ITokenStore store, ITokenSink sink)
+        public TokenRecoveryService(IOptions<SecurityEventTokenClientOptions> options, ILogger<TokenRecoveryService> logger, ITokenStore store, ITokenSink sink)
         {
+            _options = options.Value;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _store = store ?? throw new ArgumentNullException(nameof(store));
             _sink = sink ?? throw new ArgumentNullException(nameof(sink));
@@ -23,7 +26,7 @@ namespace Uruk.Client
         public Task StartAsync(CancellationToken cancellationToken)
         {
             _logger.LogInformation("Timed Hosted Service running.");
-            _timer = new Timer(Process, null, TimeSpan.Zero, TimeSpan.FromSeconds(2));
+            _timer = new Timer(Process, null, TimeSpan.Zero, TimeSpan.FromSeconds(_options.ReloadTokenIntervalInSeconds));
 
             return Task.CompletedTask;
         }

@@ -95,7 +95,7 @@ namespace Uruk.Client
             using var bufferWriter = new PooledByteBufferWriter(1024);
             _writer.WriteToken(descriptor, bufferWriter);
 #if NETSTANDARD2_0
-            var content = new ByteArrayContent(bufferWriter.Buffer, 0, bufferWriter.Index);
+            var content = new ByteArrayContent(bufferWriter.Buffer, 0, bufferWriter.WrittenCount);
 #else
             var content = new ReadOnlyMemoryContent(bufferWriter.WrittenMemory);
 #endif

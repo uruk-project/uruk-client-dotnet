@@ -124,7 +124,7 @@ namespace Uruk.Client
                 using (var tempFileStream = File.OpenWrite(tempFilename))
                 {
 #if NETSTANDARD2_0
-                    await tempFileStream.WriteAsync(bufferWriter.Buffer, 0, bufferWriter.Index);
+                    await tempFileStream.WriteAsync(bufferWriter.Buffer, 0, bufferWriter.WrittenCount);
 #else
                     await tempFileStream.WriteAsync(bufferWriter.WrittenMemory);
 #endif

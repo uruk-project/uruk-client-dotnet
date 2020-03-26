@@ -9,35 +9,33 @@ namespace Uruk.Client
 {
     public class SecurityEventTokenPushResponse
     {
-        public SecurityEventTokenPushResponse(EventTransmissionStatus status, HttpStatusCode httpStatusCode, byte[] raw)
+        public SecurityEventTokenPushResponse(EventTransmissionStatus status, HttpStatusCode httpStatusCode, string body)
         {
             HttpStatusCode = httpStatusCode;
             Status = status;
-            Raw = raw ?? throw new ArgumentNullException(nameof(raw));
+            ErrorBody = body ?? throw new ArgumentNullException(nameof(body));
         }
 
         public SecurityEventTokenPushResponse(EventTransmissionStatus status, HttpStatusCode httpStatusCode)
         {
             HttpStatusCode = httpStatusCode;
             Status = status;
-            Raw = Array.Empty<byte>();
         }
 
         public SecurityEventTokenPushResponse(EventTransmissionStatus status)
         {
             Status = status;
-            Raw = Array.Empty<byte>();
         }
-
-        public HttpStatusCode? HttpStatusCode { get; }
 
         public EventTransmissionStatus Status { get; }
 
-        public byte[] Raw { get; }
+        public HttpStatusCode? HttpStatusCode { get; }
+
+        public string? ErrorBody { get; }
 
         public string? Error { get; private set; }
 
-        public string? Description { get; private set; }
+        public string? ErrorDescription { get; private set; }
 
         public Exception? Exception { get; private set; }
 
@@ -83,12 +81,12 @@ namespace Uruk.Client
                                     err = reader.GetString();
                                     if (description != null)
                                     {
-                                        return ErrorFailure(statusCode, errorMessage, err, description);
+                                        return ErrorFailure(statusCode, Encoding.UTF8.GetString(errorMessage), err, description);
                                     }
                                     continue;
                                 }
 
-                                return ErrorFailure(statusCode, errorMessage, "parsing_error", "Error occurred during error message parsing: property 'err' must be of type 'string'.");
+                                return ErrorFailure(statusCode, Encoding.UTF8.GetString(errorMessage), "parsing_error", "Error occurred during error message parsing: property 'err' must be of type 'string'.");
 
                             case "description":
                                 if (reader.Read() && reader.TokenType == JsonTokenType.String)
@@ -96,13 +94,13 @@ namespace Uruk.Client
                                     description = reader.GetString();
                                     if (err != null)
                                     {
-                                        return ErrorFailure(statusCode, errorMessage, err, description);
+                                        return ErrorFailure(statusCode, Encoding.UTF8.GetString(errorMessage), err, description);
                                     }
 
                                     continue;
                                 }
 
-                                return ErrorFailure(statusCode, errorMessage, "parsing_error", "Error occurred during error message parsing: property 'description' must be of type 'string'.");
+                                return ErrorFailure(statusCode, Encoding.UTF8.GetString(errorMessage), "parsing_error", "Error occurred during error message parsing: property 'description' must be of type 'string'.");
 
                             default:
                                 // Skip the unattended properties
@@ -113,20 +111,20 @@ namespace Uruk.Client
 
                     if (err != null)
                     {
-                        return ErrorFailure(statusCode, errorMessage, err, description);
+                        return ErrorFailure(statusCode, Encoding.UTF8.GetString(errorMessage), err, description);
                     }
                     else
                     {
-                        return ErrorFailure(statusCode, errorMessage, "parsing_error", "Error occurred during error message parsing: missing property 'err'.");
+                        return ErrorFailure(statusCode, Encoding.UTF8.GetString(errorMessage), "parsing_error", "Error occurred during error message parsing: missing property 'err'.");
                     }
                 }
             }
             catch (JsonException e)
             {
-                return Failure(statusCode, errorMessage, e);
+                return Failure(statusCode, Encoding.UTF8.GetString(errorMessage), e);
             }
 
-            return ErrorFailure(statusCode, errorMessage, "parsing_error", "Error occurred during error message parsing: invalid JSON." +
+            return ErrorFailure(statusCode, Encoding.UTF8.GetString(errorMessage), "parsing_error", "Error occurred during error message parsing: invalid JSON." +
                 Environment.NewLine + "The error message is:" +
                 Environment.NewLine + Encoding.UTF8.GetString(errorMessage));
         }
@@ -146,12 +144,12 @@ namespace Uruk.Client
 
         public static SecurityEventTokenPushResponse Success(HttpStatusCode statusCode)
         {
-            return new SecurityEventTokenPushResponse(EventTransmissionStatus.Success, statusCode, Array.Empty<byte>());
+            return new SecurityEventTokenPushResponse(EventTransmissionStatus.Success, statusCode);
         }
 
-        public static SecurityEventTokenPushResponse Failure(HttpStatusCode statusCode, byte[] raw, Exception exception)
+        public static SecurityEventTokenPushResponse Failure(HttpStatusCode statusCode, string body, Exception exception)
         {
-            return new SecurityEventTokenPushResponse(EventTransmissionStatus.Error, statusCode, raw)
+            return new SecurityEventTokenPushResponse(EventTransmissionStatus.Error, statusCode, body)
             {
                 Exception = exception
             };
@@ -179,27 +177,27 @@ namespace Uruk.Client
 
         public static SecurityEventTokenPushResponse Failure(Exception exception)
         {
-            return new SecurityEventTokenPushResponse(EventTransmissionStatus.Error, 0, Array.Empty<byte>())
+            return new SecurityEventTokenPushResponse(EventTransmissionStatus.Error, 0)
             {
                 Exception = exception
             };
         }
 
-        public static SecurityEventTokenPushResponse ErrorFailure(HttpStatusCode statusCode, byte[] raw, string error, string? description = null)
+        public static SecurityEventTokenPushResponse ErrorFailure(HttpStatusCode statusCode, string body, string error, string? description = null)
         {
-            return new SecurityEventTokenPushResponse(EventTransmissionStatus.Error, statusCode, raw)
+            return new SecurityEventTokenPushResponse(EventTransmissionStatus.Error, statusCode, body)
             {
                 Error = error,
-                Description = description
+                ErrorDescription = description
             };
         }
 
-        public static SecurityEventTokenPushResponse Warning(HttpStatusCode statusCode, byte[] raw, string error, string? description = null)
+        public static SecurityEventTokenPushResponse Warning(HttpStatusCode statusCode, string body, string error, string? description = null)
         {
-            return new SecurityEventTokenPushResponse(EventTransmissionStatus.Warning, statusCode, raw)
+            return new SecurityEventTokenPushResponse(EventTransmissionStatus.Warning, statusCode, body)
             {
                 Error = error,
-                Description = description
+                ErrorDescription = description
             };
         }
     }

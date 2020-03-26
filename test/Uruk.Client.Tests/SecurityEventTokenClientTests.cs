@@ -16,13 +16,12 @@ using Xunit;
 
 namespace Uruk.Client.Tests
 {
-    public class UrukClientTests
+    public class SecurityEventTokenClientTests
     {
         private static SecurityEventTokenClient CreateClient(HttpMessageHandler handler, bool tokenSinkResult = true, ITokenStore store = null, IHostEnvironment env = null)
         {
-            HttpClient httpClient = new HttpClient(handler);
-            httpClient.BaseAddress = new Uri("https://uruk.example.com");
-            return new SecurityEventTokenClient(httpClient, Options.Create(new SecurityEventTokenClientOptions()), new TestTokenSink(tokenSinkResult), store ?? new TestTokenStore(), new TestLogger<SecurityEventTokenClient>(), env);
+            var options = new SecurityEventTokenClientOptions { EventEndpoint = "https://uruk.example.com/events" };
+            return new SecurityEventTokenClient(new HttpClient(handler), Options.Create(options), new TestTokenSink(tokenSinkResult), store ?? new TestTokenStore(), new TestLogger<SecurityEventTokenClient>(), env);
         }
 
         private class TestTokenSink : ITokenSink
@@ -64,7 +63,7 @@ namespace Uruk.Client.Tests
 
             Assert.Equal(EventTransmissionStatus.Success, response.Status);
             Assert.Null(response.Error);
-            Assert.Null(response.Description);
+            Assert.Null(response.ErrorDescription);
             Assert.Null(response.Exception);
         }
 
@@ -83,7 +82,7 @@ namespace Uruk.Client.Tests
 
             Assert.Equal(EventTransmissionStatus.Error, response.Status);
             Assert.Equal("test_error", response.Error);
-            Assert.Equal("Test description", response.Description);
+            Assert.Equal("Test description", response.ErrorDescription);
             Assert.Null(response.Exception);
         }
 
@@ -97,7 +96,7 @@ namespace Uruk.Client.Tests
 
             Assert.Equal(EventTransmissionStatus.Error, response.Status);
             Assert.Null(response.Error);
-            Assert.Null(response.Description);
+            Assert.Null(response.ErrorDescription);
             Assert.Null(response.Exception);
         }
 
@@ -113,7 +112,7 @@ namespace Uruk.Client.Tests
 
             Assert.Equal(EventTransmissionStatus.Error, response.Status);
             Assert.Equal("test_error", response.Error);
-            Assert.Null(response.Description);
+            Assert.Null(response.ErrorDescription);
             Assert.Null(response.Exception);
         }
 
@@ -134,7 +133,7 @@ namespace Uruk.Client.Tests
 
             Assert.Equal(EventTransmissionStatus.Error, response.Status);
             Assert.Equal("parsing_error", response.Error);
-            Assert.Equal(expectedMessage, response.Description);
+            Assert.Equal(expectedMessage, response.ErrorDescription);
             Assert.Null(response.Exception);
         }
 
@@ -150,7 +149,7 @@ namespace Uruk.Client.Tests
 
             Assert.Equal(EventTransmissionStatus.Error, response.Status);
             Assert.Null(response.Error);
-            Assert.Null(response.Description);
+            Assert.Null(response.ErrorDescription);
             Assert.NotNull(response.Exception);
             Assert.IsAssignableFrom<JsonException>(response.Exception);
         }
@@ -167,7 +166,7 @@ namespace Uruk.Client.Tests
 
             Assert.Equal(EventTransmissionStatus.Error, response.Status);
             Assert.Equal("parsing_error", response.Error);
-            Assert.Equal("Error occurred during error message parsing: missing property 'err'.", response.Description);
+            Assert.Equal("Error occurred during error message parsing: missing property 'err'.", response.ErrorDescription);
             Assert.Null(response.Exception);
         }
 
@@ -225,7 +224,7 @@ namespace Uruk.Client.Tests
 
             Assert.Equal(EventTransmissionStatus.Error, response.Status);
             Assert.Null(response.Error);
-            Assert.Null(response.Description);
+            Assert.Null(response.ErrorDescription);
             Assert.NotNull(response.Exception);
             Assert.IsType(exceptionType, response.Exception);
 
@@ -244,7 +243,7 @@ namespace Uruk.Client.Tests
 
             Assert.Equal(EventTransmissionStatus.Error, response.Status);
             Assert.Null(response.Error);
-            Assert.Null(response.Description);
+            Assert.Null(response.ErrorDescription);
             Assert.NotNull(response.Exception);
             Assert.IsType(exceptionType, response.Exception);
 
@@ -263,7 +262,7 @@ namespace Uruk.Client.Tests
 
             Assert.Equal(EventTransmissionStatus.Error, response.Status);
             Assert.Null(response.Error);
-            Assert.Null(response.Description);
+            Assert.Null(response.ErrorDescription);
             Assert.NotNull(response.Exception);
             Assert.IsType(exceptionType, response.Exception);
 
