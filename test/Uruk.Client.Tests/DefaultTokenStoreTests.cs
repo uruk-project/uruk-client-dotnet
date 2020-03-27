@@ -66,6 +66,11 @@ namespace Uruk.Client.Tests
 
         private string[] GetTokenFiles()
         {
+            if (!Directory.Exists(_directory))
+            {
+                return 0;
+            }
+
             return Directory.GetFiles(_directory, "*.token", SearchOption.TopDirectoryOnly);
         }
     }
