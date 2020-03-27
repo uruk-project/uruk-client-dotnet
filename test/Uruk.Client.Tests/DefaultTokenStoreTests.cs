@@ -68,7 +68,7 @@ namespace Uruk.Client.Tests
         {
             if (!Directory.Exists(_directory))
             {
-                return 0;
+                return Array.Empty<string>();
             }
 
             return Directory.GetFiles(_directory, "*.token", SearchOption.TopDirectoryOnly);
