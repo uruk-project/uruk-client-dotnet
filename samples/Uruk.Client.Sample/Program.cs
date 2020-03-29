@@ -11,7 +11,7 @@ namespace Uruk.Client
     {
         static async Task Main(string[] args)
         {
-            var client = new SecurityEventTokenClient("https://example.com");
+            var client = new AuditTrailClient("https://example.com");
 
             var descriptor = new SecurityEventTokenDescriptor()
             {
@@ -30,7 +30,7 @@ namespace Uruk.Client
                 { "attributes", new JwtArray(new List<string> { "id", "name", "userName", "password", "emails" }) }
             });
 
-            var result = await client.SendTokenAsync(descriptor);
+            var result = await client.SendAuditTrailAsync(descriptor);
             Console.WriteLine(result.Status);
         }
     }

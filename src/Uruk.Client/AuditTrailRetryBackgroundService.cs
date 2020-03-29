@@ -7,14 +7,14 @@ using Microsoft.Extensions.Logging;
 
 namespace Uruk.Client
 {
-    public class TokenRetryBackgroundService : BackgroundService
+    public class AuditTrailRetryBackgroundService : BackgroundService
     {
-        private readonly ISecurityEventTokenClient _client;
-        private readonly ITokenSink _sink;
-        private readonly ITokenStore _store;
-        private readonly ILogger<TokenRetryBackgroundService> _logger;
+        private readonly IAuditTrailClient _client;
+        private readonly IAuditTrailSink _sink;
+        private readonly IAuditTrailStore _store;
+        private readonly ILogger<AuditTrailRetryBackgroundService> _logger;
 
-        public TokenRetryBackgroundService(ISecurityEventTokenClient client, ITokenSink sink, ITokenStore store, ILogger<TokenRetryBackgroundService> logger)
+        public AuditTrailRetryBackgroundService(IAuditTrailClient client, IAuditTrailSink sink, IAuditTrailStore store, ILogger<AuditTrailRetryBackgroundService> logger)
         {
             _client = client ?? throw new ArgumentNullException(nameof(client));
             _sink = sink ?? throw new ArgumentNullException(nameof(sink));
@@ -32,7 +32,7 @@ namespace Uruk.Client
                     _logger.LogInformation($"'{Encoding.UTF8.GetString(token.Value)}', try #{token.RetryCount}");
                     if (token.RetryCount < 3)
                     {
-                        var response = await _client.ResendTokenAsync(token, cancellationToken);
+                        var response = await _client.ResendAuditRrailAsync(token, cancellationToken);
                         if (response.Status == EventTransmissionStatus.Success)
                         {
                             _store.DeleteRecord(token);

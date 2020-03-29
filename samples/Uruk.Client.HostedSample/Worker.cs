@@ -9,9 +9,9 @@ namespace Uruk.Client.HostedSample
 {
     public class Worker : BackgroundService
     {
-        private readonly ISecurityEventTokenClient _client;
+        private readonly IAuditTrailClient _client;
 
-        public Worker(ISecurityEventTokenClient client)
+        public Worker(IAuditTrailClient client)
         {
             _client = client ?? throw new ArgumentNullException(nameof(client));
         }
@@ -37,7 +37,7 @@ namespace Uruk.Client.HostedSample
                     { "attributes", new JwtArray(new List<string> { "id", "name", "userName", "password", "emails" }) }
                 });
 
-                await _client.SendTokenAsync(descriptor);
+                await _client.SendAuditTrailAsync(descriptor);
                 await Task.Delay(1000, stoppingToken);
             }
         }

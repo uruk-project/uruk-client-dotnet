@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 
 namespace Uruk.Client
 {
-    public interface ITokenSink
+    public interface IAuditTrailSink
     {
         public bool TryWrite(Token token);
 

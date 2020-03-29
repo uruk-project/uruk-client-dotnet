@@ -7,15 +7,15 @@ using Microsoft.Extensions.Options;
 
 namespace Uruk.Client
 {
-    public class TokenRecoveryService : IHostedService, IDisposable
+    public class AuditTrailRecoveryService : IHostedService, IDisposable
     {
-        private readonly SecurityEventTokenClientOptions _options;
-        private readonly ILogger<TokenRecoveryService> _logger;
-        private readonly ITokenStore _store;
-        private readonly ITokenSink _sink;
+        private readonly AuditTrailClientOptions _options;
+        private readonly ILogger<AuditTrailRecoveryService> _logger;
+        private readonly IAuditTrailStore _store;
+        private readonly IAuditTrailSink _sink;
         private Timer? _timer;
 
-        public TokenRecoveryService(IOptions<SecurityEventTokenClientOptions> options, ILogger<TokenRecoveryService> logger, ITokenStore store, ITokenSink sink)
+        public AuditTrailRecoveryService(IOptions<AuditTrailClientOptions> options, ILogger<AuditTrailRecoveryService> logger, IAuditTrailStore store, IAuditTrailSink sink)
         {
             _options = options.Value;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -33,20 +33,20 @@ namespace Uruk.Client
 
         private void Process(object? state)
         {
-            _logger.LogInformation("Starting {TaskName} task ...", nameof(TokenRecoveryService));
+            _logger.LogInformation("Starting {TaskName} task ...", nameof(AuditTrailRecoveryService));
             int count = 0;
-            foreach (var token in _store.GetAllTokenRecords())
+            foreach (var token in _store.GetAllAuditTrailRecords())
             {
                 if (!_sink.TryWrite(token))
                 {
-                    _logger.LogWarning("Task {TaskName} aborted. The sink is completed. {Count} token(s) injected.", nameof(TokenRecoveryService));
+                    _logger.LogWarning("Task {TaskName} aborted. The sink is completed. {Count} token(s) injected.", nameof(AuditTrailRecoveryService));
                     return;
                 }
 
                 count++;
             }
 
-            _logger.LogInformation("Task {TaskName} completed. {Count} token(s) injected.", nameof(TokenRecoveryService), count);
+            _logger.LogInformation("Task {TaskName} completed. {Count} token(s) injected.", nameof(AuditTrailRecoveryService), count);
         }
 
         public Task StopAsync(CancellationToken cancellationToken)

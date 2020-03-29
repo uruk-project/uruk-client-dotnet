@@ -7,22 +7,22 @@ using System.Threading.Tasks;
 
 namespace Uruk.Client
 {
-    public class SecurityEventTokenPushResponse
+    public class AuditTrailPushResponse
     {
-        public SecurityEventTokenPushResponse(EventTransmissionStatus status, HttpStatusCode httpStatusCode, string body)
+        public AuditTrailPushResponse(EventTransmissionStatus status, HttpStatusCode httpStatusCode, string body)
         {
             HttpStatusCode = httpStatusCode;
             Status = status;
             ErrorBody = body ?? throw new ArgumentNullException(nameof(body));
         }
 
-        public SecurityEventTokenPushResponse(EventTransmissionStatus status, HttpStatusCode httpStatusCode)
+        public AuditTrailPushResponse(EventTransmissionStatus status, HttpStatusCode httpStatusCode)
         {
             HttpStatusCode = httpStatusCode;
             Status = status;
         }
 
-        public SecurityEventTokenPushResponse(EventTransmissionStatus status)
+        public AuditTrailPushResponse(EventTransmissionStatus status)
         {
             Status = status;
         }
@@ -39,7 +39,7 @@ namespace Uruk.Client
 
         public Exception? Exception { get; private set; }
 
-        internal static async Task<SecurityEventTokenPushResponse> FromHttpResponseAsync(HttpResponseMessage responseMessage)
+        internal static async Task<AuditTrailPushResponse> FromHttpResponseAsync(HttpResponseMessage responseMessage)
         {
             if (responseMessage.StatusCode == System.Net.HttpStatusCode.Accepted)
             {
@@ -48,7 +48,7 @@ namespace Uruk.Client
 
             if (!string.Equals(responseMessage.Content.Headers.ContentType?.MediaType, "application/json", StringComparison.OrdinalIgnoreCase))
             {
-                return new SecurityEventTokenPushResponse(EventTransmissionStatus.Error, responseMessage.StatusCode);
+                return new AuditTrailPushResponse(EventTransmissionStatus.Error, responseMessage.StatusCode);
             }
 
             var errorMessage = await responseMessage.Content.ReadAsByteArrayAsync();
@@ -61,7 +61,7 @@ namespace Uruk.Client
             return ReadErrorMessage(responseMessage.StatusCode, errorMessage);
         }
 
-        private static SecurityEventTokenPushResponse ReadErrorMessage(HttpStatusCode statusCode, byte[] errorMessage)
+        private static AuditTrailPushResponse ReadErrorMessage(HttpStatusCode statusCode, byte[] errorMessage)
         {
             Utf8JsonReader reader = new Utf8JsonReader(errorMessage);
             try
@@ -129,72 +129,72 @@ namespace Uruk.Client
                 Environment.NewLine + Encoding.UTF8.GetString(errorMessage));
         }
 
-        internal static SecurityEventTokenPushResponse Warning(Exception exception)
+        internal static AuditTrailPushResponse Warning(Exception exception)
         {
-            return new SecurityEventTokenPushResponse(EventTransmissionStatus.Warning)
+            return new AuditTrailPushResponse(EventTransmissionStatus.Warning)
             {
                 Exception = exception
             };
         }
 
-        internal static SecurityEventTokenPushResponse Warning(HttpStatusCode statusCode)
+        internal static AuditTrailPushResponse Warning(HttpStatusCode statusCode)
         {
-            return new SecurityEventTokenPushResponse(EventTransmissionStatus.Warning, statusCode);
+            return new AuditTrailPushResponse(EventTransmissionStatus.Warning, statusCode);
         }
 
-        public static SecurityEventTokenPushResponse Success(HttpStatusCode statusCode)
+        public static AuditTrailPushResponse Success(HttpStatusCode statusCode)
         {
-            return new SecurityEventTokenPushResponse(EventTransmissionStatus.Success, statusCode);
+            return new AuditTrailPushResponse(EventTransmissionStatus.Success, statusCode);
         }
 
-        public static SecurityEventTokenPushResponse Failure(HttpStatusCode statusCode, string body, Exception exception)
+        public static AuditTrailPushResponse Failure(HttpStatusCode statusCode, string body, Exception exception)
         {
-            return new SecurityEventTokenPushResponse(EventTransmissionStatus.Error, statusCode, body)
+            return new AuditTrailPushResponse(EventTransmissionStatus.Error, statusCode, body)
             {
                 Exception = exception
             };
         }
 
-        public static SecurityEventTokenPushResponse Failure(SecurityEventTokenPushResponse other)
+        public static AuditTrailPushResponse Failure(AuditTrailPushResponse other)
         {
             if (other.HttpStatusCode.HasValue)
             {
-                return new SecurityEventTokenPushResponse(EventTransmissionStatus.Error, other.HttpStatusCode.Value);
+                return new AuditTrailPushResponse(EventTransmissionStatus.Error, other.HttpStatusCode.Value);
             }
             else
             {
-                return new SecurityEventTokenPushResponse(EventTransmissionStatus.Error)
+                return new AuditTrailPushResponse(EventTransmissionStatus.Error)
                 {
                     Exception = other.Exception
                 };
             }
         }
 
-        public static SecurityEventTokenPushResponse Failure(HttpStatusCode statusCode)
+        public static AuditTrailPushResponse Failure(HttpStatusCode statusCode)
         {
-            return new SecurityEventTokenPushResponse(EventTransmissionStatus.Error, statusCode);
+            return new AuditTrailPushResponse(EventTransmissionStatus.Error, statusCode);
         }
 
-        public static SecurityEventTokenPushResponse Failure(Exception exception)
+        public static AuditTrailPushResponse Failure(Exception exception)
         {
-            return new SecurityEventTokenPushResponse(EventTransmissionStatus.Error, 0)
+            return new AuditTrailPushResponse(EventTransmissionStatus.Error, 0)
             {
                 Exception = exception
             };
         }
 
-        public static SecurityEventTokenPushResponse ErrorFailure(HttpStatusCode statusCode, string body, string error, string? description = null)
+        public static AuditTrailPushResponse ErrorFailure(HttpStatusCode statusCode, string body, string error, string? description = null)
         {
-            return new SecurityEventTokenPushResponse(EventTransmissionStatus.Error, statusCode, body)
+            return new AuditTrailPushResponse(EventTransmissionStatus.Error, statusCode, body)
             {
                 Error = error,
                 ErrorDescription = description
             };
         }
 
-        public static SecurityEventTokenPushResponse Warning(HttpStatusCode statusCode, string body, string error, string? description = null)
+        public static AuditTrailPushResponse Warning(HttpStatusCode statusCode, string body, string error, string? description = null)
         {
-            return new SecurityEventTokenPushResponse(EventTransmissionStatus.Warning, statusCode, body)
+            return new AuditTrailPushResponse(EventTransmissionStatus.Warning, statusCode, body)
             {
                 Error = error,
                 ErrorDescription = description

@@ -8,7 +8,7 @@ using System.Threading.Channels;
 
 namespace Uruk.Client
 {
-    internal class DefaultTokenSink : ITokenSink
+    internal class DefaultAuditTrailSink : IAuditTrailSink
     {
 #if NETSTANDARD2_0 || NETSTANDARD2_1
         private readonly BlockingCollection<Token> _channel = new BlockingCollection<Token>();
