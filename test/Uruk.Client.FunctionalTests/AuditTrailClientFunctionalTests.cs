@@ -126,9 +126,12 @@ namespace Uruk.Client.FunctionalTests
 
         private void DeleteFiles()
         {
-            foreach (var filename in Directory.EnumerateFiles(_directory, "*.token", SearchOption.TopDirectoryOnly))
+            if (Directory.Exists(_directory))
             {
-                File.Delete(filename);
+                foreach (var filename in Directory.EnumerateFiles(_directory, "*.token", SearchOption.TopDirectoryOnly))
+                {
+                    File.Delete(filename);
+                }
             }
         }
 
