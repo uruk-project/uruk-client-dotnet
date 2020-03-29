@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Uruk.Client\Uruk.Client.csproj" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="3.1.3" />
   </ItemGroup>
 
 </Project>
