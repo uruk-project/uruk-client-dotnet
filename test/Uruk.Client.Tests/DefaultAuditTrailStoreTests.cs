@@ -6,11 +6,11 @@ using Xunit;
 
 namespace Uruk.Client.Tests
 {
-    public class DefaultTokenStoreTests : IDisposable
+    public class DefaultAuditTrailStoreTests : IDisposable
     {
         private readonly string _directory;
 
-        public DefaultTokenStoreTests()
+        public DefaultAuditTrailStoreTests()
         {
             const string tokensFallbackDir = "SET_TOKENS_FALLBACK_DIR";
             var root = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)
@@ -25,7 +25,7 @@ namespace Uruk.Client.Tests
         {
             var initialFileCount = GetTokenFiles().Length;
             var store = CreateStore();
-            await store.RecordTokenAsync(new byte[] { 0x01, 0x02, 0x03, 0x04 });
+            await store.RecordAudirTrailAsync(new byte[] { 0x01, 0x02, 0x03, 0x04 });
             var finalFileCount = GetTokenFiles().Length;
 
             Assert.Equal(initialFileCount + 1, finalFileCount);
@@ -42,7 +42,7 @@ namespace Uruk.Client.Tests
             File.WriteAllText(Path.Combine(_directory, "file_invalid.token"), "eyJhbGciOiJkaXIiLCJlbmMiOiJBMTI4Q0JDLUhTMjU2IiwiemlwIjoiREVGIn0..WJyI8eJZEgsU890A34fKSg.UePAIdDFOnEVx-6TeLm-KQ.IzfCGcPMXwZRnU_NRlAfc-lW18s1w9UqPzAYto_21gwXXX");
             var store = CreateStore();
             int i = 0;
-            foreach (var token in store.GetAllTokenRecords())
+            foreach (var token in store.GetAllAuditTrailRecords())
             {
                 Assert.Equal(new byte[] { 1, 2, 3, 4 }, token.Value);
                 i++;
@@ -51,9 +51,9 @@ namespace Uruk.Client.Tests
             Assert.Equal(3, i);
         }
 
-        private static DefaultTokenStore CreateStore()
+        private static DefaultAuditTrailStore CreateStore()
         {
-            return new DefaultTokenStore(Options.Create(new SecurityEventTokenClientOptions { EncryptionKey = new byte[32] }), new TestLogger<DefaultTokenStore>());
+            return new DefaultAuditTrailStore(Options.Create(new AuditTrailClientOptions { EncryptionKey = new byte[32] }), new TestLogger<DefaultAuditTrailStore>());
         }
 
         public void Dispose()

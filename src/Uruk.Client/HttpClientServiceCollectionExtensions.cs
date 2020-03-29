@@ -10,32 +10,32 @@ namespace Uruk.Client
     public static class HttpClientServiceCollectionExtensions
     {
         /// <summary>
-        /// Adds the <see cref="SecurityEventTokenClient"/> to the container, using the provided delegate to register
+        /// Adds the <see cref="AuditTrailClient"/> to the container, using the provided delegate to register
         /// event receiver.
         /// </summary>
         /// <remarks>
         /// This operation is idempotent - multiple invocations will still only result in a single
-        /// <see cref="SecurityEventTokenClient"/> instance in the <see cref="IServiceCollection"/>. It can be invoked
-        /// multiple times in order to get access to the <see cref="IEventReceiverBuilder"/> in multiple places.
+        /// <see cref="AuditTrailClient"/> instance in the <see cref="IServiceCollection"/>. It can be invoked
+        /// multiple times in order to get access to the <see cref="IHttpClientBuilder"/> in multiple places.
         /// </remarks>
         /// <param name="services">The <see cref="IServiceCollection"/> to add the <see cref="EventReceiverService"/> to.</param>
         /// <param name="audience">The audience.</param>
         /// <returns>An instance of <see cref="IEventReceiverBuilder"/> from which event receiver can be registered.</returns>
-        public static IHttpClientBuilder AddSecurityEventTokenClient(this IServiceCollection services)
+        public static IHttpClientBuilder AddAuditTrailClient(this IServiceCollection services)
         {
             if (services is null)
             {
                 throw new ArgumentNullException(nameof(services));
             }
 
-            services.AddHostedService<TokenRetryBackgroundService>();
-            services.AddHostedService<TokenRecoveryService>();
-            services.TryAddSingleton<ITokenSink, DefaultTokenSink>();
-            services.TryAddSingleton<ITokenStore, DefaultTokenStore>();
-            return services.AddHttpClient<ISecurityEventTokenClient, SecurityEventTokenClient>();
+            services.AddHostedService<AuditTrailRetryBackgroundService>();
+            services.AddHostedService<AuditTrailRecoveryService>();
+            services.TryAddSingleton<IAuditTrailSink, DefaultAuditTrailSink>();
+            services.TryAddSingleton<IAuditTrailStore, DefaultAuditTrailStore>();
+            return services.AddHttpClient<IAuditTrailClient, AuditTrailClient>();
         }
 
-        public static IHttpClientBuilder AddSecurityEventTokenClient(this IServiceCollection services, Action<SecurityEventTokenClientOptions> configure)
+        public static IHttpClientBuilder AddAuditTrailClient(this IServiceCollection services, Action<AuditTrailClientOptions> configure)
         {
             if (services is null)
             {
@@ -48,10 +48,10 @@ namespace Uruk.Client
             }
 
             services.Configure(configure);
-            return services.AddSecurityEventTokenClient();
+            return services.AddAuditTrailClient();
         }
 
-        public static IServiceCollection ConfigureSecurityEventTokenClient(this IServiceCollection services, Action<SecurityEventTokenClientOptions> configure)
+        public static IServiceCollection ConfigureAuditTrailClient(this IServiceCollection services, Action<AuditTrailClientOptions> configure)
         {
             if (services is null)
             {

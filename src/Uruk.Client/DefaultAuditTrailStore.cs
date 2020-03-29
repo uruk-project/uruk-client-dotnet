@@ -11,7 +11,7 @@ namespace Uruk.Client
     /// <summary>
     /// This store record the token in the file system
     /// </summary>
-    public class DefaultTokenStore : ITokenStore
+    public class DefaultAuditTrailStore : IAuditTrailStore
     {
         private static readonly Token EmptyToken = new Token();
 
@@ -19,11 +19,11 @@ namespace Uruk.Client
         private readonly JwtWriter _writer;
         private readonly JwtReader _reader;
         private readonly TokenValidationPolicy _policy;
-        private readonly SecurityEventTokenClientOptions _options;
-        private readonly ILogger<DefaultTokenStore> _logger;
+        private readonly AuditTrailClientOptions _options;
+        private readonly ILogger<DefaultAuditTrailStore> _logger;
         private readonly string _directory;
 
-        public DefaultTokenStore(IOptions<SecurityEventTokenClientOptions> options, ILogger<DefaultTokenStore> logger)
+        public DefaultAuditTrailStore(IOptions<AuditTrailClientOptions> options, ILogger<DefaultAuditTrailStore> logger)
         {
             _options = options.Value;
             _logger = logger;
@@ -64,7 +64,7 @@ namespace Uruk.Client
                 .Build();
         }
 
-        public IEnumerable<Token> GetAllTokenRecords()
+        public IEnumerable<Token> GetAllAuditTrailRecords()
         {
             if (Directory.Exists(_directory))
             {
@@ -102,7 +102,7 @@ namespace Uruk.Client
             }
         }
 
-        public async Task<string> RecordTokenAsync(byte[] token)
+        public async Task<string> RecordAudirTrailAsync(byte[] token)
         {
             var descriptor = new BinaryJweDescriptor(token)
             {

@@ -16,15 +16,15 @@ using Xunit;
 
 namespace Uruk.Client.Tests
 {
-    public class SecurityEventTokenClientTests
+    public class AuditTrailClientTests
     {
-        private static SecurityEventTokenClient CreateClient(HttpMessageHandler handler, bool tokenSinkResult = true, ITokenStore store = null, IHostEnvironment env = null)
+        private static AuditTrailClient CreateClient(HttpMessageHandler handler, bool tokenSinkResult = true, IAuditTrailStore store = null, IHostEnvironment env = null)
         {
-            var options = new SecurityEventTokenClientOptions { EventEndpoint = "https://uruk.example.com/events" };
-            return new SecurityEventTokenClient(new HttpClient(handler), Options.Create(options), new TestTokenSink(tokenSinkResult), store ?? new TestTokenStore(), new TestLogger<SecurityEventTokenClient>(), env);
+            var options = new AuditTrailClientOptions { EventEndpoint = "https://uruk.example.com/events" };
+            return new AuditTrailClient(new HttpClient(handler), Options.Create(options), new TestTokenSink(tokenSinkResult), store ?? new TestTokenStore(), new TestLogger<AuditTrailClient>(), env);
         }
 
-        private class TestTokenSink : ITokenSink
+        private class TestTokenSink : IAuditTrailSink
         {
             private readonly bool _success;
 
@@ -59,7 +59,7 @@ namespace Uruk.Client.Tests
         {
             var httpClient = CreateClient(new TestHttpMessageHandler(new HttpResponseMessage(HttpStatusCode.Accepted)));
             var request = CreateDescriptor();
-            var response = await httpClient.SendTokenAsync(request);
+            var response = await httpClient.SendAuditTrailAsync(request);
 
             Assert.Equal(EventTransmissionStatus.Success, response.Status);
             Assert.Null(response.Error);
@@ -78,7 +78,7 @@ namespace Uruk.Client.Tests
             message.Content = new StringContent(jsonError);
             var httpClient = CreateClient(new TestHttpMessageHandler(message));
             var request = CreateDescriptor();
-            var response = await httpClient.SendTokenAsync(request);
+            var response = await httpClient.SendAuditTrailAsync(request);
 
             Assert.Equal(EventTransmissionStatus.Error, response.Status);
             Assert.Equal("test_error", response.Error);
@@ -92,7 +92,7 @@ namespace Uruk.Client.Tests
             var message = new HttpResponseMessage(HttpStatusCode.BadRequest);
             var httpClient = CreateClient(new TestHttpMessageHandler(message, setDefaultContentType: false));
             var request = CreateDescriptor();
-            var response = await httpClient.SendTokenAsync(request);
+            var response = await httpClient.SendAuditTrailAsync(request);
 
             Assert.Equal(EventTransmissionStatus.Error, response.Status);
             Assert.Null(response.Error);
@@ -108,7 +108,7 @@ namespace Uruk.Client.Tests
             message.Content = new StringContent(jsonError);
             var httpClient = CreateClient(new TestHttpMessageHandler(message));
             var request = CreateDescriptor();
-            var response = await httpClient.SendTokenAsync(request);
+            var response = await httpClient.SendAuditTrailAsync(request);
 
             Assert.Equal(EventTransmissionStatus.Error, response.Status);
             Assert.Equal("test_error", response.Error);
@@ -129,7 +129,7 @@ namespace Uruk.Client.Tests
             message.Content = new StringContent(jsonError);
             var httpClient = CreateClient(new TestHttpMessageHandler(message));
             var request = CreateDescriptor();
-            var response = await httpClient.SendTokenAsync(request);
+            var response = await httpClient.SendAuditTrailAsync(request);
 
             Assert.Equal(EventTransmissionStatus.Error, response.Status);
             Assert.Equal("parsing_error", response.Error);
@@ -145,7 +145,7 @@ namespace Uruk.Client.Tests
             message.Content = new StringContent(jsonError);
             var httpClient = CreateClient(new TestHttpMessageHandler(message));
             var request = CreateDescriptor();
-            var response = await httpClient.SendTokenAsync(request);
+            var response = await httpClient.SendAuditTrailAsync(request);
 
             Assert.Equal(EventTransmissionStatus.Error, response.Status);
             Assert.Null(response.Error);
@@ -162,7 +162,7 @@ namespace Uruk.Client.Tests
             message.Content = new StringContent(jsonError);
             var httpClient = CreateClient(new TestHttpMessageHandler(message));
             var request = CreateDescriptor();
-            var response = await httpClient.SendTokenAsync(request);
+            var response = await httpClient.SendAuditTrailAsync(request);
 
             Assert.Equal(EventTransmissionStatus.Error, response.Status);
             Assert.Equal("parsing_error", response.Error);
@@ -175,7 +175,7 @@ namespace Uruk.Client.Tests
         {
             var httpClient = CreateClient(new TestHttpMessageHandler(new HttpResponseMessage(HttpStatusCode.Accepted)));
             var request = CreateDescriptor();
-            var response = await httpClient.SendTokenAsync(request);
+            var response = await httpClient.SendAuditTrailAsync(request);
 
             Assert.Equal(EventTransmissionStatus.Success, response.Status);
         }
@@ -189,7 +189,7 @@ namespace Uruk.Client.Tests
             var response1 = new HttpResponseMessage { Content = new FailingHttpContent(exceptionType) };
             var httpClient = CreateClient(new TestHttpMessageHandler(response1), tokenSinkResult: true, store, new TestHostEnvironment());
             var request = CreateDescriptor();
-            var response = await httpClient.SendTokenAsync(request);
+            var response = await httpClient.SendAuditTrailAsync(request);
 
             Assert.Equal(EventTransmissionStatus.Warning, response.Status);
             Assert.IsType(exceptionType, response.Exception);
@@ -205,7 +205,7 @@ namespace Uruk.Client.Tests
             var response1 = new HttpResponseMessage { Content = new FailingHttpContent(exceptionType) };
             var httpClient = CreateClient(new TestHttpMessageHandler(response1), tokenSinkResult: true, store);
             var request = CreateDescriptor();
-            var response = await httpClient.SendTokenAsync(request);
+            var response = await httpClient.SendAuditTrailAsync(request);
 
             Assert.Equal(EventTransmissionStatus.Error, response.Status);
             Assert.IsType(exceptionType, response.Exception);
@@ -220,7 +220,7 @@ namespace Uruk.Client.Tests
             var store = new TestTokenStore();
             var httpClient = CreateClient(new FailingHttpMessageHandler((Exception)Activator.CreateInstance(exceptionType)), false, store, new TestHostEnvironment());
             var request = CreateDescriptor();
-            var response = await httpClient.SendTokenAsync(request);
+            var response = await httpClient.SendAuditTrailAsync(request);
 
             Assert.Equal(EventTransmissionStatus.Error, response.Status);
             Assert.Null(response.Error);
@@ -239,7 +239,7 @@ namespace Uruk.Client.Tests
             var store = new TestTokenStore();
             var httpClient = CreateClient(new FailingHttpMessageHandler((Exception)Activator.CreateInstance(exceptionType)), false, store, env: null);
             var request = CreateDescriptor();
-            var response = await httpClient.SendTokenAsync(request);
+            var response = await httpClient.SendAuditTrailAsync(request);
 
             Assert.Equal(EventTransmissionStatus.Error, response.Status);
             Assert.Null(response.Error);
@@ -258,7 +258,7 @@ namespace Uruk.Client.Tests
             var response1 = new HttpResponseMessage() { Content = new FailingHttpContent(exceptionType) };
             var httpClient = CreateClient(new TestHttpMessageHandler(response1), store: store);
             var request = CreateDescriptor();
-            var response = await httpClient.SendTokenAsync(request);
+            var response = await httpClient.SendAuditTrailAsync(request);
 
             Assert.Equal(EventTransmissionStatus.Error, response.Status);
             Assert.Null(response.Error);
@@ -358,7 +358,7 @@ namespace Uruk.Client.Tests
 
 
 
-        private class TestTokenStore : ITokenStore
+        private class TestTokenStore : IAuditTrailStore
         {
             public int RecordedCount { get; set; }
 
@@ -367,12 +367,12 @@ namespace Uruk.Client.Tests
                 throw new NotImplementedException();
             }
 
-            public IEnumerable<Token> GetAllTokenRecords()
+            public IEnumerable<Token> GetAllAuditTrailRecords()
             {
                 throw new NotImplementedException();
             }
 
-            public Task<string> RecordTokenAsync(byte[] token)
+            public Task<string> RecordAudirTrailAsync(byte[] token)
             {
                 RecordedCount++;
                 return Task.FromResult<string>(null);

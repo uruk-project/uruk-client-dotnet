@@ -17,7 +17,7 @@ namespace Uruk.Client.HostedSample
                 {
                     services
                         .AddHostedService<Worker>()
-                        .AddSecurityEventTokenClient(o =>
+                        .AddAuditTrailClient(o =>
                         {
                             o.EventEndpoint = "https://example.com/events/";
                             o.EncryptionKey = new byte[32];

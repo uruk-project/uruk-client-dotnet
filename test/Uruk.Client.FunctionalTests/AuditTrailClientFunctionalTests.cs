@@ -14,9 +14,9 @@ namespace Uruk.Client.FunctionalTests
 {
     public class AuditTrailClientFunctionalTests
     {
-        private ISecurityEventTokenClient CreateClient(IHost host)
+        private IAuditTrailClient CreateClient(IHost host)
         {
-            return host.Services.GetRequiredService<ISecurityEventTokenClient>();
+            return host.Services.GetRequiredService<IAuditTrailClient>();
         }
 
         private IHost CreateHost(HttpResponseMessage response)
@@ -36,7 +36,7 @@ namespace Uruk.Client.FunctionalTests
             var host = CreateHost(response);
             var client = CreateClient(host);
             var descriptor = CreateDescriptor();
-            var result = await client.SendTokenAsync(descriptor);
+            var result = await client.SendAuditTrailAsync(descriptor);
 
             Assert.Equal(EventTransmissionStatus.Success, result.Status);
         }
@@ -53,7 +53,7 @@ namespace Uruk.Client.FunctionalTests
             var host = CreateHost(response);
             var client = CreateClient(host);
             var descriptor = CreateDescriptor();
-            var result = await client.SendTokenAsync(descriptor);
+            var result = await client.SendAuditTrailAsync(descriptor);
 
             Assert.Equal(EventTransmissionStatus.Error, result.Status);
             Assert.Equal("invalid_request", result.Error);
@@ -72,7 +72,7 @@ namespace Uruk.Client.FunctionalTests
             var host = CreateHost(response);
             var client = CreateClient(host);
             var descriptor = CreateDescriptor();
-            var result = await client.SendTokenAsync(descriptor);
+            var result = await client.SendAuditTrailAsync(descriptor);
 
             Assert.Equal(EventTransmissionStatus.Error, result.Status);
             Assert.Equal("parsing_error", result.Error);
@@ -107,7 +107,7 @@ namespace Uruk.Client.FunctionalTests
                 .ConfigureServices((hostContext, services) =>
                 {
                     services
-                        .AddSecurityEventTokenClient(o =>
+                        .AddAuditTrailClient(o =>
                         {
                             o.EventEndpoint = "https://example.com/events/";
                             o.EncryptionKey = new byte[32];

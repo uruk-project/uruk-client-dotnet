@@ -1,6 +1,6 @@
 ﻿namespace Uruk.Client
 {
-    public class SecurityEventTokenClientOptions
+    public class AuditTrailClientOptions
     {
         public string EventEndpoint { get; set; }
 
