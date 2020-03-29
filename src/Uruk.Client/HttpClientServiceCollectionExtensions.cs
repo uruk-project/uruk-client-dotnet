@@ -26,12 +26,14 @@ namespace Uruk.Client
             if (services is null)
             {
                 throw new ArgumentNullException(nameof(services));
-            }
+            }   
 
             services.AddHostedService<AuditTrailRetryBackgroundService>();
             services.AddHostedService<AuditTrailRecoveryService>();
             services.TryAddSingleton<IAuditTrailSink, DefaultAuditTrailSink>();
             services.TryAddSingleton<IAuditTrailStore, DefaultAuditTrailStore>();
+
+            services.AddOptions<AuditTrailClientOptions>();
             return services.AddHttpClient<IAuditTrailClient, AuditTrailClient>();
         }
 

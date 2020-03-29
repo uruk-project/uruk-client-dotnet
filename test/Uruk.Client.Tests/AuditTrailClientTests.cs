@@ -372,7 +372,7 @@ namespace Uruk.Client.Tests
                 throw new NotImplementedException();
             }
 
-            public Task<string> RecordAudirTrailAsync(byte[] token)
+            public Task<string> RecordAuditTrailAsync(byte[] token)
             {
                 RecordedCount++;
                 return Task.FromResult<string>(null);

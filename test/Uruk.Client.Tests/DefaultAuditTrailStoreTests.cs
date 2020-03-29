@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Threading.Tasks;
+using JsonWebToken;
 using Microsoft.Extensions.Options;
 using Xunit;
 
@@ -17,7 +18,7 @@ namespace Uruk.Client.Tests
                         ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
                         ?? Environment.GetEnvironmentVariable(tokensFallbackDir);
 
-            _directory = Path.Combine(root, ".uruk");
+            _directory = Path.Combine(root, Constants.DefaultStorageDirectory);
         }
 
         [Fact]
@@ -25,7 +26,7 @@ namespace Uruk.Client.Tests
         {
             var initialFileCount = GetTokenFiles().Length;
             var store = CreateStore();
-            await store.RecordAudirTrailAsync(new byte[] { 0x01, 0x02, 0x03, 0x04 });
+            await store.RecordAuditTrailAsync(new byte[] { 0x01, 0x02, 0x03, 0x04 });
             var finalFileCount = GetTokenFiles().Length;
 
             Assert.Equal(initialFileCount + 1, finalFileCount);
@@ -53,7 +54,10 @@ namespace Uruk.Client.Tests
 
         private static DefaultAuditTrailStore CreateStore()
         {
-            return new DefaultAuditTrailStore(Options.Create(new AuditTrailClientOptions { EncryptionKey = new byte[32] }), new TestLogger<DefaultAuditTrailStore>());
+            return new DefaultAuditTrailStore(Options.Create(new AuditTrailClientOptions
+            {
+                StorageEncryptionKey = new SymmetricJwk(new byte[32])
+            }), new TestLogger<DefaultAuditTrailStore>());
         }
 
         public void Dispose()

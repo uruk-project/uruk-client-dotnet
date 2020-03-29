@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -12,8 +14,21 @@ using Xunit;
 
 namespace Uruk.Client.FunctionalTests
 {
-    public class AuditTrailClientFunctionalTests
+    public class AuditTrailClientFunctionalTests : IDisposable
     {
+        private readonly string _directory;
+
+        public AuditTrailClientFunctionalTests()
+        {
+            const string tokensFallbackDir = "SET_TOKENS_FALLBACK_DIR";
+            var root = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)
+                        ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
+                        ?? Environment.GetEnvironmentVariable(tokensFallbackDir);
+
+            _directory = Path.Combine(root, Constants.DefaultStorageDirectory);
+            DeleteFiles();
+        }
+
         private IAuditTrailClient CreateClient(IHost host)
         {
             return host.Services.GetRequiredService<IAuditTrailClient>();
@@ -21,7 +36,17 @@ namespace Uruk.Client.FunctionalTests
 
         private IHost CreateHost(HttpResponseMessage response)
         {
-            var host = CreateHostBuilder(response).Build();
+            return BuildHost(CreateHostBuilder(response));
+        }
+
+        private IHost CreateHost(Exception exception)
+        {
+            return BuildHost(CreateHostBuilder(exception: exception));
+        }
+
+        private IHost BuildHost(IHostBuilder builder)
+        {
+            var host = builder.Build();
             host.Start();
             return host;
         }
@@ -79,6 +104,34 @@ namespace Uruk.Client.FunctionalTests
             Assert.NotNull(result.ErrorDescription);
         }
 
+        [Fact]
+        public async Task Post_SendFailed()
+        {
+            var host = CreateHost(new HttpRequestException());
+            var client = CreateClient(host);
+            var descriptor = CreateDescriptor();
+            var result = await client.SendAuditTrailAsync(descriptor);
+
+            Assert.Equal(EventTransmissionStatus.Warning, result.Status);
+            Assert.Null(result.Error);
+            Assert.Null(result.ErrorDescription);
+
+            Assert.Single(Directory.EnumerateFiles(_directory, "*.token", SearchOption.TopDirectoryOnly));
+        }
+
+        public void Dispose()
+        {
+            DeleteFiles();
+        }
+
+        private void DeleteFiles()
+        {
+            foreach (var filename in Directory.EnumerateFiles(_directory, "*.token", SearchOption.TopDirectoryOnly))
+            {
+                File.Delete(filename);
+            }
+        }
+
         private static SecurityEventTokenDescriptor CreateDescriptor()
         {
             var descriptor = new SecurityEventTokenDescriptor()
@@ -100,9 +153,9 @@ namespace Uruk.Client.FunctionalTests
             return descriptor;
         }
 
-        private static IHostBuilder CreateHostBuilder(HttpResponseMessage response)
+        private static IHostBuilder CreateHostBuilder(HttpResponseMessage? response = null, Exception? exception = null)
         {
-            var handler = new TestHttpMessageHandler(response);
+            var handler = response != null ? new TestHttpMessageHandler(response) : new TestHttpMessageHandler(exception);
             return Host.CreateDefaultBuilder()
                 .ConfigureServices((hostContext, services) =>
                 {
@@ -110,7 +163,7 @@ namespace Uruk.Client.FunctionalTests
                         .AddAuditTrailClient(o =>
                         {
                             o.EventEndpoint = "https://example.com/events/";
-                            o.EncryptionKey = new byte[32];
+                            o.StorageEncryptionKey = new SymmetricJwk(new byte[32]);
                         })
                         .ConfigurePrimaryHttpMessageHandler(() => handler)
                         .ConfigureHttpClient(builder =>
@@ -119,18 +172,36 @@ namespace Uruk.Client.FunctionalTests
                 });
         }
 
+
         private class TestHttpMessageHandler : HttpMessageHandler
         {
-            private readonly HttpResponseMessage _response;
+            private readonly HttpResponseMessage? _response;
+            private readonly Exception? _exception;
 
             public TestHttpMessageHandler(HttpResponseMessage response)
             {
                 _response = response;
             }
 
+            public TestHttpMessageHandler(Exception exception)
+            {
+                _exception = exception;
+            }
+
             protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
-                return Task.FromResult(_response);
+                if (_response != null)
+                {
+                    return Task.FromResult(_response);
+                }
+                else if (_exception != null)
+                {
+                    return Task.FromException<HttpResponseMessage>(_exception);
+                }
+                else
+                {
+                    throw new InvalidOperationException();
+                }
             }
         }
     }

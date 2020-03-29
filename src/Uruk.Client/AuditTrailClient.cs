@@ -106,7 +106,7 @@ namespace Uruk.Client
                 if (IsHosted)
                 {
                     var data = bufferWriter.WrittenSpan.ToArray();
-                    var filename = await _store.RecordAudirTrailAsync(data);
+                    var filename = await _store.RecordAuditTrailAsync(data);
                     var token = new Token(data, filename, 0);
                     if (_sink.TryWrite(token))
                     {
@@ -228,7 +228,7 @@ namespace Uruk.Client
                 yield break;
             }
 
-            public Task<string> RecordAudirTrailAsync(byte[] token)
+            public Task<string> RecordAuditTrailAsync(byte[] token)
             {
                 return Task.FromResult(string.Empty);
             }
