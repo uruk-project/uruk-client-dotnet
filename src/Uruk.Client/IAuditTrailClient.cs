@@ -8,6 +8,6 @@ namespace Uruk.Client
     {
         public Task<AuditTrailPushResponse> SendAuditTrailAsync(SecurityEventTokenDescriptor descriptor, CancellationToken cancellationToken = default);
   
-        public Task<AuditTrailPushResponse> ResendAuditRrailAsync(Token token, CancellationToken cancellationToken = default);
+        public Task<AuditTrailPushResponse> ResendAuditTrailAsync(Token token, CancellationToken cancellationToken = default);
     }
 }

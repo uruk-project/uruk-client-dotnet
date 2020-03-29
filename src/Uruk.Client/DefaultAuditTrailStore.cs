@@ -8,11 +8,6 @@ using Microsoft.Extensions.Options;
 
 namespace Uruk.Client
 {
-    public static class Constants
-    {
-        public const string DefaultStorageDirectory = ".uruk";
-    }
-
     /// <summary>
     /// This store record the token in the file system
     /// </summary>

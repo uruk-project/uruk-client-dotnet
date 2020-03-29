@@ -25,7 +25,7 @@ namespace Uruk.Client.FunctionalTests
                         ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
                         ?? Environment.GetEnvironmentVariable(tokensFallbackDir);
 
-            _directory = Path.Combine(root, Constants.DefaultStorageDirectory);
+            _directory = Path.Combine(root!, Constants.DefaultStorageDirectory);
             DeleteFiles();
         }
 
@@ -165,7 +165,7 @@ namespace Uruk.Client.FunctionalTests
                     services
                         .AddAuditTrailClient(o =>
                         {
-                            o.EventEndpoint = "https://example.com/events/";
+                            o.DeliveryEndpoint = "https://example.com/events/";
                             o.StorageEncryptionKey = new SymmetricJwk(new byte[32]);
                         })
                         .ConfigurePrimaryHttpMessageHandler(() => handler)
@@ -186,7 +186,7 @@ namespace Uruk.Client.FunctionalTests
                 _response = response;
             }
 
-            public TestHttpMessageHandler(Exception exception)
+            public TestHttpMessageHandler(Exception? exception)
             {
                 _exception = exception;
             }

@@ -18,9 +18,9 @@ namespace Uruk.Client.Tests
 {
     public class AuditTrailClientTests
     {
-        private static AuditTrailClient CreateClient(HttpMessageHandler handler, bool tokenSinkResult = true, IAuditTrailStore store = null, IHostEnvironment env = null)
+        private static AuditTrailClient CreateClient(HttpMessageHandler handler, bool tokenSinkResult = true, IAuditTrailStore? store = null, IHostEnvironment? env = null)
         {
-            var options = new AuditTrailClientOptions { EventEndpoint = "https://uruk.example.com/events" };
+            var options = new AuditTrailClientOptions { DeliveryEndpoint = "https://uruk.example.com/events" };
             return new AuditTrailClient(new HttpClient(handler), Options.Create(options), new TestTokenSink(tokenSinkResult), store ?? new TestTokenStore(), new TestLogger<AuditTrailClient>(), env);
         }
 
@@ -74,8 +74,10 @@ namespace Uruk.Client.Tests
         [InlineData("{\"more\":true,\"err\":\"test_error\",\"description\":\"Test description\"}")]
         public async Task SendAsync_NotAcceptedWithError_Error(string jsonError)
         {
-            var message = new HttpResponseMessage(HttpStatusCode.BadRequest);
-            message.Content = new StringContent(jsonError);
+            var message = new HttpResponseMessage(HttpStatusCode.BadRequest)
+            {
+                Content = new StringContent(jsonError)
+            };
             var httpClient = CreateClient(new TestHttpMessageHandler(message));
             var request = CreateDescriptor();
             var response = await httpClient.SendAuditTrailAsync(request);
@@ -104,8 +106,10 @@ namespace Uruk.Client.Tests
         [InlineData("{\"err\":\"test_error\"}")]
         public async Task SendAsync_NotAcceptedWithError_ErrorWithoutDescription(string jsonError)
         {
-            var message = new HttpResponseMessage(HttpStatusCode.BadRequest);
-            message.Content = new StringContent(jsonError);
+            var message = new HttpResponseMessage(HttpStatusCode.BadRequest)
+            {
+                Content = new StringContent(jsonError)
+            };
             var httpClient = CreateClient(new TestHttpMessageHandler(message));
             var request = CreateDescriptor();
             var response = await httpClient.SendAuditTrailAsync(request);
@@ -125,8 +129,10 @@ namespace Uruk.Client.Tests
         public async Task SendAsync_NotAcceptedWithUnparsableError_Error(string jsonError, string expectedMessage)
         {
             expectedMessage = expectedMessage.Replace("\n", Environment.NewLine);
-            var message = new HttpResponseMessage(HttpStatusCode.BadRequest);
-            message.Content = new StringContent(jsonError);
+            var message = new HttpResponseMessage(HttpStatusCode.BadRequest)
+            {
+                Content = new StringContent(jsonError)
+            };
             var httpClient = CreateClient(new TestHttpMessageHandler(message));
             var request = CreateDescriptor();
             var response = await httpClient.SendAuditTrailAsync(request);
@@ -141,8 +147,10 @@ namespace Uruk.Client.Tests
         public async Task SendAsync_NotAcceptedWithInvalidJson_Error()
         {
             string jsonError = "{\"err\":";
-            var message = new HttpResponseMessage(HttpStatusCode.BadRequest);
-            message.Content = new StringContent(jsonError);
+            var message = new HttpResponseMessage(HttpStatusCode.BadRequest)
+            {
+                Content = new StringContent(jsonError)
+            };
             var httpClient = CreateClient(new TestHttpMessageHandler(message));
             var request = CreateDescriptor();
             var response = await httpClient.SendAuditTrailAsync(request);
@@ -218,7 +226,7 @@ namespace Uruk.Client.Tests
         public async Task SendAsync_Retriable_Hosted_ErrorCaptureException(Type exceptionType)
         {
             var store = new TestTokenStore();
-            var httpClient = CreateClient(new FailingHttpMessageHandler((Exception)Activator.CreateInstance(exceptionType)), false, store, new TestHostEnvironment());
+            var httpClient = CreateClient(new FailingHttpMessageHandler((Exception)Activator.CreateInstance(exceptionType)!), false, store, new TestHostEnvironment());
             var request = CreateDescriptor();
             var response = await httpClient.SendAuditTrailAsync(request);
 
@@ -237,7 +245,7 @@ namespace Uruk.Client.Tests
         public async Task SendAsync_Retriable_NotHosted_ErrorCaptureException(Type exceptionType)
         {
             var store = new TestTokenStore();
-            var httpClient = CreateClient(new FailingHttpMessageHandler((Exception)Activator.CreateInstance(exceptionType)), false, store, env: null);
+            var httpClient = CreateClient(new FailingHttpMessageHandler((Exception)Activator.CreateInstance(exceptionType)!), false, store, env: null);
             var request = CreateDescriptor();
             var response = await httpClient.SendAuditTrailAsync(request);
 
@@ -271,17 +279,21 @@ namespace Uruk.Client.Tests
 
         private static SecurityEventTokenDescriptor CreateDescriptor()
         {
-            var descriptor = new SecurityEventTokenDescriptor();
-            descriptor.Type = "secevent+jwt";
-            descriptor.Algorithm = SignatureAlgorithm.HmacSha256;
-            descriptor.SigningKey = new SymmetricJwk(new byte[128]);
-            descriptor.Issuer = "https://client.example.com";
-            descriptor.IssuedAt = DateTime.UtcNow;
-            descriptor.JwtId = "4d3559ec67504aaba65d40b0363faad8";
-            descriptor.Audiences = new List<string> { "https://scim.example.com/Feeds/98d52461fa5bbc879593b7754", "https://scim.example.com/Feeds/5d7604516b1d08641d7676ee7" };
-            var @event = new JwtObject();
-            @event.Add("ref", "https://scim.example.com/Users/44f6142df96bd6ab61e7521d9");
-            @event.Add("attributes", new JwtArray(new List<string> { "id", "name", "userName", "password", "emails" }));
+            var descriptor = new SecurityEventTokenDescriptor
+            {
+                Type = "secevent+jwt",
+                Algorithm = SignatureAlgorithm.HmacSha256,
+                SigningKey = new SymmetricJwk(new byte[128]),
+                Issuer = "https://client.example.com",
+                IssuedAt = DateTime.UtcNow,
+                JwtId = "4d3559ec67504aaba65d40b0363faad8",
+                Audiences = new List<string> { "https://scim.example.com/Feeds/98d52461fa5bbc879593b7754", "https://scim.example.com/Feeds/5d7604516b1d08641d7676ee7" }
+            };
+            var @event = new JwtObject
+            {
+                { "ref", "https://scim.example.com/Users/44f6142df96bd6ab61e7521d9" },
+                { "attributes", new JwtArray(new List<string> { "id", "name", "userName", "password", "emails" }) }
+            };
             descriptor.AddEvent("urn:ietf:params:scim:event:create", @event);
             return descriptor;
         }
@@ -342,7 +354,7 @@ namespace Uruk.Client.Tests
 
             protected override Task SerializeToStreamAsync(Stream stream, TransportContext context)
             {
-                throw (Exception)Activator.CreateInstance(_type);
+                throw (Exception)Activator.CreateInstance(_type)!;
             }
 
             protected override bool TryComputeLength(out long length)
@@ -375,7 +387,7 @@ namespace Uruk.Client.Tests
             public Task<string> RecordAuditTrailAsync(byte[] token)
             {
                 RecordedCount++;
-                return Task.FromResult<string>(null);
+                return Task.FromResult<string>(string.Empty);
             }
         }
 

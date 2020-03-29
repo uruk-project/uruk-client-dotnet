@@ -20,7 +20,7 @@ namespace Uruk.Client.HostedSample
                         .AddHostedService<Worker>()
                         .AddAuditTrailClient(o =>
                         {
-                            o.EventEndpoint = "https://example.com/events/";
+                            o.DeliveryEndpoint = "https://example.com/events/";
                             o.StorageEncryptionKey = new SymmetricJwk(new byte[32]);
                         });
                 });

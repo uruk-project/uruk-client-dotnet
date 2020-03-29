@@ -18,7 +18,7 @@ namespace Uruk.Client.Tests
                         ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
                         ?? Environment.GetEnvironmentVariable(tokensFallbackDir);
 
-            _directory = Path.Combine(root, Constants.DefaultStorageDirectory);
+            _directory = Path.Combine(root!, Constants.DefaultStorageDirectory);
         }
 
         [Fact]

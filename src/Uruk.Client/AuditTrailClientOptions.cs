@@ -5,9 +5,9 @@ namespace Uruk.Client
     public class AuditTrailClientOptions
     {
         /// <summary>
-        /// Gets or sets URL to the audit trail hub endpoint.
+        /// Gets or sets URL to the delivery endpoint.
         /// </summary>
-        public string EventEndpoint { get; set; }
+        public string? DeliveryEndpoint { get; set; }
 
         /// <summary>
         /// Gets or sets the symmetric key used for encrypting the audit trail stored in case of recoverable error. If <c>null</c>, the audit trail will be stored in plaintext.
