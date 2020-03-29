@@ -46,7 +46,7 @@ namespace Uruk.Client.Tests
             {
                 Assert.Equal(new byte[] { 1, 2, 3, 4 }, token.Value);
                 i++;
-            } 
+            }
 
             Assert.Equal(3, i);
         }
