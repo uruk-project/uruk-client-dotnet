@@ -175,7 +175,6 @@ namespace Uruk.Client.FunctionalTests
                 });
         }
 
-
         private class TestHttpMessageHandler : HttpMessageHandler
         {
             private readonly HttpResponseMessage? _response;
