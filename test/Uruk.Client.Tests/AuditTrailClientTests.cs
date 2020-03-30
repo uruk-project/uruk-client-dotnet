@@ -18,40 +18,27 @@ namespace Uruk.Client.Tests
 {
     public class AuditTrailClientTests
     {
-        private static AuditTrailClient CreateClient(HttpMessageHandler handler, bool tokenSinkResult = true, IAuditTrailStore? store = null, IHostEnvironment? env = null)
+        [Fact]
+        public void Ctor()
         {
-            var options = new AuditTrailClientOptions { DeliveryEndpoint = "https://uruk.example.com/events" };
-            return new AuditTrailClient(new HttpClient(handler), Options.Create(options), new TestTokenSink(tokenSinkResult), store ?? new TestTokenStore(), new TestLogger<AuditTrailClient>(), env);
-        }
+            var httpClient = new HttpClient();
+            var options = Options.Create(new AuditTrailClientOptions {  DeliveryEndpoint = "https://example.com" });
+            var sink = new TestTokenSink(true);
+            var store = new TestTokenStore();
+            var logger = new TestLogger<AuditTrailClient>();
+            var env = new TestHostEnvironment();
 
-        private class TestTokenSink : IAuditTrailSink
-        {
-            private readonly bool _success;
+            var client = new AuditTrailClient("https://example.com");
+            client = new AuditTrailClient(httpClient, options, sink, store, logger, env);
+            client = new AuditTrailClient(httpClient, options, sink, store, logger);
 
-            public TestTokenSink(bool success)
-            {
-                _success = success;
-            }
-
-            public Task Stop(CancellationToken cancellationToken)
-            {
-                throw new NotImplementedException();
-            }
-
-            public bool TryRead(out Token token)
-            {
-                throw new NotImplementedException();
-            }
-
-            public bool TryWrite(Token token)
-            {
-                return _success;
-            }
-
-            public ValueTask<bool> WaitToReadAsync(CancellationToken cancellationToken)
-            {
-                throw new NotImplementedException();
-            }
+            Assert.Throws<ArgumentNullException>("eventEndpoint", () => new AuditTrailClient(null!));
+            Assert.Throws<ArgumentNullException>("httpClient", () => new AuditTrailClient(null!, options, sink, store, logger, env));
+            Assert.Throws<ArgumentNullException>("options", () => new AuditTrailClient(httpClient, null!, sink, store, logger, env));
+            Assert.Throws<ArgumentNullException>("sink", () => new AuditTrailClient(httpClient, options, null!, store, logger, env));
+            Assert.Throws<ArgumentNullException>("store", () => new AuditTrailClient(httpClient, options, sink, null!, logger, env));
+            Assert.Throws<ArgumentNullException>("logger", () => new AuditTrailClient(httpClient, options, sink, store, null!, env));
+            Assert.Throws<ArgumentException>("options", () => new AuditTrailClient(httpClient, Options.Create(new AuditTrailClientOptions()), sink, store, logger, env));
         }
 
         [Fact]
@@ -275,6 +262,42 @@ namespace Uruk.Client.Tests
             Assert.IsType(exceptionType, response.Exception);
 
             Assert.Equal(0, store.RecordedCount);
+        }
+
+        private static AuditTrailClient CreateClient(HttpMessageHandler handler, bool tokenSinkResult = true, IAuditTrailStore? store = null, IHostEnvironment? env = null)
+        {
+            var options = new AuditTrailClientOptions { DeliveryEndpoint = "https://uruk.example.com/events" };
+            return new AuditTrailClient(new HttpClient(handler), Options.Create(options), new TestTokenSink(tokenSinkResult), store ?? new TestTokenStore(), new TestLogger<AuditTrailClient>(), env);
+        }
+
+        private class TestTokenSink : IAuditTrailSink
+        {
+            private readonly bool _success;
+
+            public TestTokenSink(bool success)
+            {
+                _success = success;
+            }
+
+            public Task Stop(CancellationToken cancellationToken)
+            {
+                throw new NotImplementedException();
+            }
+
+            public bool TryRead(out Token token)
+            {
+                throw new NotImplementedException();
+            }
+
+            public bool TryWrite(Token token)
+            {
+                return _success;
+            }
+
+            public ValueTask<bool> WaitToReadAsync(CancellationToken cancellationToken)
+            {
+                throw new NotImplementedException();
+            }
         }
 
         private static SecurityEventTokenDescriptor CreateDescriptor()

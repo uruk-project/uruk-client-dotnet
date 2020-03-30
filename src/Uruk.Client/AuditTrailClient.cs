@@ -24,6 +24,11 @@ namespace Uruk.Client
 
         public AuditTrailClient(HttpClient httpClient, IOptions<AuditTrailClientOptions> options, IAuditTrailSink sink, IAuditTrailStore store, ILogger<AuditTrailClient> logger, IHostEnvironment? env = null)
         {
+            if (options is null)
+            {
+                throw new ArgumentNullException(nameof(options));
+            }
+
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
             _sink = sink ?? throw new ArgumentNullException(nameof(sink));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
