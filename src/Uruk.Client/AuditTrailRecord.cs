@@ -2,9 +2,9 @@
 
 namespace Uruk.Client
 {
-    public struct Token
+    public struct AuditTrailItem
     {
-        public Token(byte[] value, string filename, int retryCount)
+        public AuditTrailItem(byte[] value, string filename, int retryCount)
         {
             Value = value;
             Filename = filename;

@@ -67,7 +67,7 @@ namespace Uruk.Client
 
         public bool IsHosted => !(_env is null);
 
-        public async Task<AuditTrailPushResponse> ResendAuditTrailAsync(Token token, CancellationToken cancellationToken = default)
+        public async Task<AuditTrailPushResponse> ResendAuditTrailAsync(AuditTrailItem token, CancellationToken cancellationToken = default)
         {
             HttpContent content = new ByteArrayContent(token.Value);
             var result = await SendTokenAsync(content, cancellationToken);
@@ -117,7 +117,7 @@ namespace Uruk.Client
                 {
                     var data = bufferWriter.WrittenSpan.ToArray();
                     var filename = await _store.RecordAuditTrailAsync(data);
-                    var token = new Token(data, filename, 0);
+                    var token = new AuditTrailItem(data, filename, 0);
                     if (_sink.TryWrite(token))
                     {
                         _logger.SendingTokenFailed(_options.DeliveryEndpoint!, result.HttpStatusCode, result.Exception);
@@ -187,18 +187,18 @@ namespace Uruk.Client
 
         private class NullSink : IAuditTrailSink
         {
-            public Task Stop(CancellationToken cancellationToken)
+            public Task StopAsync(CancellationToken cancellationToken)
             {
                 return Task.CompletedTask;
             }
 
-            public bool TryRead(out Token token)
+            public bool TryRead(out AuditTrailItem token)
             {
                 token = default;
                 return true;
             }
 
-            public bool TryWrite(Token token)
+            public bool TryWrite(AuditTrailItem token)
             {
                 return false;
             }
@@ -229,11 +229,11 @@ namespace Uruk.Client
 
         private class NullStore : IAuditTrailStore
         {
-            public void DeleteRecord(Token token)
+            public void DeleteRecord(AuditTrailItem token)
             {
             }
 
-            public IEnumerable<Token> GetAllAuditTrailRecords()
+            public IEnumerable<AuditTrailItem> GetAllAuditTrailRecords()
             {
                 yield break;
             }

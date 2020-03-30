@@ -13,7 +13,7 @@ namespace Uruk.Client
     /// </summary>
     public class DefaultAuditTrailStore : IAuditTrailStore
     {
-        private static readonly Token EmptyToken = new Token();
+        private static readonly AuditTrailItem EmptyToken = new AuditTrailItem();
 
         private readonly SymmetricJwk? _encryptionKey;
         private readonly JwtWriter? _writer;
@@ -80,7 +80,7 @@ namespace Uruk.Client
                 .Build();
         }
 
-        public IEnumerable<Token> GetAllAuditTrailRecords()
+        public IEnumerable<AuditTrailItem> GetAllAuditTrailRecords()
         {
             if (Directory.Exists(_directory))
             {
@@ -95,21 +95,21 @@ namespace Uruk.Client
             }
         }
 
-        private Token ReadTokenFromFile(string filename)
+        private AuditTrailItem ReadTokenFromFile(string filename)
         {
             try
             {
                 var data = File.ReadAllBytes(filename);
                 if (_reader is null)
                 {
-                    return new Token(data, filename, 0);
+                    return new AuditTrailItem(data, filename, 0);
                 }
                 else
                 {
                     var result = _reader.TryReadToken(data, _policy);
                     if (result.Succedeed)
                     {
-                        return new Token(result.Token!.Binary!, filename, 0);
+                        return new AuditTrailItem(result.Token!.Binary!, filename, 0);
                     }
                     else
                     {
@@ -182,7 +182,7 @@ namespace Uruk.Client
             return finalFilename;
         }
 
-        public void DeleteRecord(Token token)
+        public void DeleteRecord(AuditTrailItem token)
         {
             File.Delete(token.Filename);
         }

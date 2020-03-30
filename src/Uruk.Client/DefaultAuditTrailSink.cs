@@ -11,9 +11,9 @@ namespace Uruk.Client
     internal class DefaultAuditTrailSink : IAuditTrailSink
     {
 #if NETSTANDARD2_0 || NETSTANDARD2_1
-        private readonly BlockingCollection<Token> _channel = new BlockingCollection<Token>();
+        private readonly BlockingCollection<AuditTrailItem> _channel = new BlockingCollection<AuditTrailItem>();
 
-        public bool TryWrite(Token token)
+        public bool TryWrite(AuditTrailItem token)
         {
             return _channel.TryAdd(token);
         }
@@ -28,19 +28,19 @@ namespace Uruk.Client
             return new ValueTask<bool>(Task.FromResult(true));
         }
 
-        public bool TryRead(out Token token)
+        public bool TryRead(out AuditTrailItem token)
         {
             return _channel.TryTake(out token);
         }
 
-        public Task Stop(CancellationToken cancellationToken)
+        public Task StopAsync(CancellationToken cancellationToken)
         {
             _channel.CompleteAdding();
             return Task.Delay(100);
         }
 #else
-        private readonly Channel<Token> _channel = Channel.CreateUnbounded<Token>();
-        public bool TryWrite(Token token)
+        private readonly Channel<AuditTrailItem> _channel = Channel.CreateUnbounded<AuditTrailItem>();
+        public bool TryWrite(AuditTrailItem token)
         {
             return _channel.Writer.TryWrite(token);
         }
@@ -50,12 +50,12 @@ namespace Uruk.Client
             return _channel.Reader.WaitToReadAsync(cancellationToken);
         }
 
-        public bool TryRead(out Token token)
+        public bool TryRead(out AuditTrailItem token)
         {
             return _channel.Reader.TryRead(out token);
         }
 
-        public Task Stop(CancellationToken cancellationToken)
+        public Task StopAsync(CancellationToken cancellationToken)
         {
             _channel.Writer.Complete();
             return _channel.Reader.Completion;

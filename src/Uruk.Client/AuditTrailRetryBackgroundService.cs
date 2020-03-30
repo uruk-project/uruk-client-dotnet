@@ -48,7 +48,7 @@ namespace Uruk.Client
 
         public override Task StopAsync(CancellationToken cancellationToken)
         {
-            return _sink.Stop(cancellationToken);
+            return _sink.StopAsync(cancellationToken);
         }
     }
 }
