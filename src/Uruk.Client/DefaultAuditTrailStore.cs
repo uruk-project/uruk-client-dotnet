@@ -82,15 +82,14 @@ namespace Uruk.Client
 
         public IEnumerable<Token> GetAllAuditTrailRecords()
         {
-            if (Directory.Exists(_directory))
+            Directory.CreateDirectory(_directory);
+
+            foreach (var filename in Directory.EnumerateFiles(_directory, "*.token", SearchOption.TopDirectoryOnly))
             {
-                foreach (var filename in Directory.EnumerateFiles(_directory, "*.token", SearchOption.TopDirectoryOnly))
+                var token = ReadTokenFromFile(filename);
+                if (token.Value != null)
                 {
-                    var token = ReadTokenFromFile(filename);
-                    if (token.Value != null)
-                    {
-                        yield return token;
-                    }
+                    yield return token;
                 }
             }
         }

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -58,7 +57,7 @@ namespace Uruk.Client.FunctionalTests
             {
                 StatusCode = HttpStatusCode.Accepted
             };
-            var host = CreateHost(response);
+            using var host = CreateHost(response);
             var client = CreateClient(host);
             var descriptor = CreateDescriptor();
             var result = await client.SendAuditTrailAsync(descriptor);
@@ -75,7 +74,7 @@ namespace Uruk.Client.FunctionalTests
                 Content = new StringContent("{\"err\":\"invalid_request\",\"description\":\"Invalid request\"}")
             };
             response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-            var host = CreateHost(response);
+            using var host = CreateHost(response);
             var client = CreateClient(host);
             var descriptor = CreateDescriptor();
             var result = await client.SendAuditTrailAsync(descriptor);
@@ -94,7 +93,7 @@ namespace Uruk.Client.FunctionalTests
                 Content = new StringContent("{}")
             };
             response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-            var host = CreateHost(response);
+            using var host = CreateHost(response);
             var client = CreateClient(host);
             var descriptor = CreateDescriptor();
             var result = await client.SendAuditTrailAsync(descriptor);
@@ -107,7 +106,7 @@ namespace Uruk.Client.FunctionalTests
         [Fact]
         public async Task Post_SendFailed()
         {
-            var host = CreateHost(new HttpRequestException());
+            using var host = CreateHost(new HttpRequestException());
             var client = CreateClient(host);
             var descriptor = CreateDescriptor();
             var result = await client.SendAuditTrailAsync(descriptor);
