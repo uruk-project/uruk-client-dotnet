@@ -1,3 +1,4 @@
+using JsonWebToken;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -19,8 +20,8 @@ namespace Uruk.Client.HostedSample
                         .AddHostedService<Worker>()
                         .AddAuditTrailClient(o =>
                         {
-                            o.EventEndpoint = "https://example.com/events/";
-                            o.EncryptionKey = new byte[32];
+                            o.DeliveryEndpoint = "https://example.com/events/";
+                            o.StorageEncryptionKey = new SymmetricJwk(new byte[32]);
                         });
                 });
         }

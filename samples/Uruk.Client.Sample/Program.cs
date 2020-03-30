@@ -2,14 +2,12 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using JsonWebToken;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 
 namespace Uruk.Client
 {
     class Program
     {
-        static async Task Main(string[] args)
+        static async Task Main()
         {
             var client = new AuditTrailClient("https://example.com");
 

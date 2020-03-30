@@ -15,9 +15,9 @@ namespace Uruk.Client
     {
         private static readonly Token EmptyToken = new Token();
 
-        private readonly SymmetricJwk _encryptionKey;
-        private readonly JwtWriter _writer;
-        private readonly JwtReader _reader;
+        private readonly SymmetricJwk? _encryptionKey;
+        private readonly JwtWriter? _writer;
+        private readonly JwtReader? _reader;
         private readonly TokenValidationPolicy _policy;
         private readonly AuditTrailClientOptions _options;
         private readonly ILogger<DefaultAuditTrailStore> _logger;
@@ -27,18 +27,26 @@ namespace Uruk.Client
         {
             _options = options.Value;
             _logger = logger;
-
-            const string tokensFallbackDir = "SET_TOKENS_FALLBACK_DIR";
-            var root = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)
-                        ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
-                        ?? Environment.GetEnvironmentVariable(tokensFallbackDir);
-
-            if (string.IsNullOrEmpty(root))
+            if (_options.StoragePath is null)
             {
-                throw new InvalidOperationException("Could not determine an appropriate location for storing tokens. Set the " + tokensFallbackDir + " environment variable to a folder where tokens should be stored.");
+                const string auditTrailFallbackDir = "AUDITTRAIL_FALLBACK_DIR";
+                var root = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)
+                            ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
+                            ?? Environment.GetEnvironmentVariable(auditTrailFallbackDir);
+
+                if (string.IsNullOrEmpty(root))
+                {
+                    throw new InvalidOperationException("Could not determine an appropriate location for storing tokens. Set the " + auditTrailFallbackDir + " environment variable to a folder where tokens should be stored.");
+                }
+
+                _directory = Path.Combine(root, Constants.DefaultStorageDirectory);
+            }
+            else
+            {
+                _directory = _options.StoragePath;
+
             }
 
-            _directory = Path.Combine(root, ".uruk");
             try
             {
                 if (ContainerUtils.IsContainer && !ContainerUtils.IsVolumeMountedFolder(_directory))
@@ -55,9 +63,17 @@ namespace Uruk.Client
                 _logger.LogTrace(ex, "Failure occurred while attempting to detect docker.");
             }
 
-            _encryptionKey = _options.EncryptionKey is null ? SymmetricJwk.GenerateKey(256) : SymmetricJwk.FromByteArray(_options.EncryptionKey);
-            _writer = new JwtWriter();
-            _reader = new JwtReader(_encryptionKey);
+            if (_options.StorageEncryptionKey != null)
+            {
+                _encryptionKey = _options.StorageEncryptionKey;
+                _writer = new JwtWriter();
+                _reader = new JwtReader(_encryptionKey);
+            }
+            else
+            {
+                _logger.LogWarning("No encryption key is defined. The audit trail will be stored in plaintext.");
+            }
+
             _policy = new TokenValidationPolicyBuilder()
                 .IgnoreNestedToken()
                 .IgnoreSignature()
@@ -84,15 +100,22 @@ namespace Uruk.Client
             try
             {
                 var data = File.ReadAllBytes(filename);
-                var result = _reader.TryReadToken(data, _policy);
-                if (result.Succedeed)
-                {                    
-                    return new Token(result.Token!.Binary!, filename, 0);
+                if (_reader is null)
+                {
+                    return new Token(data, filename, 0);
                 }
                 else
                 {
-                    _logger.ReadingTokenFileFailed(filename);
-                    return EmptyToken;
+                    var result = _reader.TryReadToken(data, _policy);
+                    if (result.Succedeed)
+                    {
+                        return new Token(result.Token!.Binary!, filename, 0);
+                    }
+                    else
+                    {
+                        _logger.ReadingTokenFileFailed(filename);
+                        return EmptyToken;
+                    }
                 }
             }
             catch (Exception e)
@@ -102,20 +125,30 @@ namespace Uruk.Client
             }
         }
 
-        public async Task<string> RecordAudirTrailAsync(byte[] token)
+        public async Task<string> RecordAuditTrailAsync(byte[] token)
         {
-            var descriptor = new BinaryJweDescriptor(token)
+            int length = token.Length;
+            var bufferWriter = new PooledByteBufferWriter(length + 512);
+            if (_writer is null)
             {
-                Algorithm = KeyManagementAlgorithm.Direct,
-                EncryptionAlgorithm = EncryptionAlgorithm.Aes128CbcHmacSha256,
-                CompressionAlgorithm = CompressionAlgorithm.Deflate,
-                EncryptionKey = _encryptionKey
-            };
+                var buffer = bufferWriter.GetMemory(length);
+                token.AsMemory().CopyTo(buffer);
+                bufferWriter.Advance(length);
+            }
+            else
+            {
+                JwtDescriptor descriptor = new BinaryJweDescriptor(token)
+                {
+                    Algorithm = KeyManagementAlgorithm.Direct,
+                    EncryptionAlgorithm = EncryptionAlgorithm.Aes128CbcHmacSha256,
+                    CompressionAlgorithm = CompressionAlgorithm.Deflate,
+                    EncryptionKey = _encryptionKey!
+                };
 
-            var bufferWriter = new PooledByteBufferWriter(1024);
-            _writer.WriteToken(descriptor, bufferWriter);
+                _writer.WriteToken(descriptor, bufferWriter);
+            }
 
-            Directory.CreateDirectory(_directory); // won't throw if the directory already exists
+            Directory.CreateDirectory(_directory);
             var finalFilename = Path.Combine(_directory, Guid.NewGuid().ToString("N") + ".token");
             var tempFilename = finalFilename + ".tmp";
 
@@ -129,7 +162,6 @@ namespace Uruk.Client
                     await tempFileStream.WriteAsync(bufferWriter.WrittenMemory);
 #endif
                 }
-
                 _logger.WritingTokenToFile(finalFilename);
 
                 try

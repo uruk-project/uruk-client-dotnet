@@ -30,6 +30,11 @@ namespace Uruk.Client
             _store = store ?? throw new ArgumentNullException(nameof(store));
             _env = env;
             _options = options.Value;
+            if (options.Value.DeliveryEndpoint is null)
+            {
+                throw new ArgumentException("The delivery endpoint is not defined.", nameof(options));
+            }
+
             _writer = new JwtWriter();
         }
 
@@ -51,13 +56,13 @@ namespace Uruk.Client
             _store = new NullStore();
             _options = new AuditTrailClientOptions
             {
-                EventEndpoint = eventEndpoint
+                DeliveryEndpoint = eventEndpoint
             };
         }
 
         public bool IsHosted => !(_env is null);
 
-        public async Task<AuditTrailPushResponse> ResendAuditRrailAsync(Token token, CancellationToken cancellationToken = default)
+        public async Task<AuditTrailPushResponse> ResendAuditTrailAsync(Token token, CancellationToken cancellationToken = default)
         {
             HttpContent content = new ByteArrayContent(token.Value);
             var result = await SendTokenAsync(content, cancellationToken);
@@ -72,11 +77,11 @@ namespace Uruk.Client
                     token.RetryCount++;
                     if (_sink.TryWrite(token))
                     {
-                        _logger.SendingTokenFailed(_options.EventEndpoint, result.HttpStatusCode, result.Exception);
+                        _logger.SendingTokenFailed(_options.DeliveryEndpoint!, result.HttpStatusCode, result.Exception);
                     }
                     else
                     {
-                        _logger.SendingTokenFailedNoRetry(_options.EventEndpoint, result.HttpStatusCode, result.Exception);
+                        _logger.SendingTokenFailedNoRetry(_options.DeliveryEndpoint!, result.HttpStatusCode, result.Exception);
                     }
 
                     break;
@@ -106,15 +111,15 @@ namespace Uruk.Client
                 if (IsHosted)
                 {
                     var data = bufferWriter.WrittenSpan.ToArray();
-                    var filename = await _store.RecordAudirTrailAsync(data);
+                    var filename = await _store.RecordAuditTrailAsync(data);
                     var token = new Token(data, filename, 0);
                     if (_sink.TryWrite(token))
                     {
-                        _logger.SendingTokenFailed(_options.EventEndpoint, result.HttpStatusCode, result.Exception);
+                        _logger.SendingTokenFailed(_options.DeliveryEndpoint!, result.HttpStatusCode, result.Exception);
                     }
                     else
                     {
-                        _logger.SendingTokenFailedNoRetry(_options.EventEndpoint, result.HttpStatusCode, result.Exception);
+                        _logger.SendingTokenFailedNoRetry(_options.DeliveryEndpoint!, result.HttpStatusCode, result.Exception);
                         if (result.HttpStatusCode.HasValue)
                         {
                             result = AuditTrailPushResponse.Failure(result.HttpStatusCode.Value);
@@ -166,7 +171,7 @@ namespace Uruk.Client
 
         private HttpRequestMessage CreateRequest(HttpContent content)
         {
-            var request = new HttpRequestMessage(HttpMethod.Post, _options.EventEndpoint)
+            var request = new HttpRequestMessage(HttpMethod.Post, _options.DeliveryEndpoint)
             {
                 Content = content,
             };
@@ -228,7 +233,7 @@ namespace Uruk.Client
                 yield break;
             }
 
-            public Task<string> RecordAudirTrailAsync(byte[] token)
+            public Task<string> RecordAuditTrailAsync(byte[] token)
             {
                 return Task.FromResult(string.Empty);
             }

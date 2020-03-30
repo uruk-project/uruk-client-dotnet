@@ -26,7 +26,7 @@ namespace Uruk.Client
         public Task StartAsync(CancellationToken cancellationToken)
         {
             _logger.LogInformation("Timed Hosted Service running.");
-            _timer = new Timer(Process, null, TimeSpan.Zero, TimeSpan.FromSeconds(_options.ReloadTokenIntervalInSeconds));
+            _timer = new Timer(Process, null, TimeSpan.Zero, TimeSpan.FromSeconds(_options.ResendIntervalInSeconds));
 
             return Task.CompletedTask;
         }

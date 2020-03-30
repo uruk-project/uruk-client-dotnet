@@ -32,7 +32,7 @@ namespace Uruk.Client
                     _logger.LogInformation($"'{Encoding.UTF8.GetString(token.Value)}', try #{token.RetryCount}");
                     if (token.RetryCount < 3)
                     {
-                        var response = await _client.ResendAuditRrailAsync(token, cancellationToken);
+                        var response = await _client.ResendAuditTrailAsync(token, cancellationToken);
                         if (response.Status == EventTransmissionStatus.Success)
                         {
                             _store.DeleteRecord(token);
