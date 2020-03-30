@@ -22,7 +22,7 @@ namespace Uruk.Client.Tests
         [Fact]
         public async Task RecordToken_NewFileInDirectory()
         {
-            string path = Path.Combine(_directory, nameof(RecordToken_NewFileInDirectory));
+            string path = Path.Combine(_directory, nameof(RecordToken_NewFileInDirectory) + Guid.NewGuid());
             var initialFileCount = EnumerateFiles(path).Count();
             var store = CreateStore(path);
             await store.RecordAuditTrailAsync(new byte[] { 0x01, 0x02, 0x03, 0x04 });
@@ -36,12 +36,12 @@ namespace Uruk.Client.Tests
         {
             const string jwe = "eyJhbGciOiJkaXIiLCJlbmMiOiJBMTI4Q0JDLUhTMjU2IiwiemlwIjoiREVGIn0..WJyI8eJZEgsU890A34fKSg.UePAIdDFOnEVx-6TeLm-KQ.IzfCGcPMXwZRnU_NRlAfc-lW18s1w9UqPzAYto_21gw";
 
-            string path = Path.Combine(_directory, nameof(GetAllTokens_IterateAllTokenFiles));
+            string path = Path.Combine(_directory, nameof(GetAllTokens_IterateAllTokenFiles) + Guid.NewGuid());
             Directory.CreateDirectory(path);
             File.WriteAllText(Path.Combine(path, "file1.token"), jwe);
             File.WriteAllText(Path.Combine(path, "file2.token"), jwe);
             File.WriteAllText(Path.Combine(path, "file3.token"), jwe);
-            File.WriteAllText(Path.Combine(path, "file_invalid.token"), "eyJhbGciOiJkaXIiLCJlbmMiOiJBMTI4Q0JDLUhTMjU2IiwiemlwIjoiREVGIn0..WJyI8eJZEgsU890A34fKSg.UePAIdDFOnEVx-6TeLm-KQ.IzfCGcPMXwZRnU_NRlAfc-lW18s1w9UqPzAYto_21gwXXX");
+            File.WriteAllText(Path.Combine(path, "file_invalid.token"), jwe + "XXX");
             var store = CreateStore(path);
             int i = 0;
             foreach (var token in store.GetAllAuditTrailRecords())

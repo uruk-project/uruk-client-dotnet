@@ -19,13 +19,10 @@ namespace Uruk.Client.FunctionalTests
 
         public AuditTrailClientFunctionalTests()
         {
-            const string tokensFallbackDir = "SET_TOKENS_FALLBACK_DIR";
             var root = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)
-                        ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
-                        ?? Environment.GetEnvironmentVariable(tokensFallbackDir);
+                        ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
 
-            _directory = Path.Combine(root!, Constants.DefaultStorageDirectory);
-            DeleteFiles();
+            _directory = Path.Combine(root!, Constants.DefaultStorageDirectory, Guid.NewGuid().ToString());
         }
 
         private IAuditTrailClient CreateClient(IHost host)
@@ -106,6 +103,7 @@ namespace Uruk.Client.FunctionalTests
         [Fact]
         public async Task Post_SendFailed()
         {
+            DeleteFiles();
             using var host = CreateHost(new HttpRequestException());
             var client = CreateClient(host);
             var descriptor = CreateDescriptor();
@@ -127,8 +125,8 @@ namespace Uruk.Client.FunctionalTests
         {
             if (Directory.Exists(_directory))
             {
-                foreach (var filename in Directory.EnumerateFiles(_directory, "*.token", SearchOption.TopDirectoryOnly))
-                {
+                foreach (var filename in Directory.EnumerateFiles(_directory, "*.token", SearchOption.AllDirectories))
+                {   
                     File.Delete(filename);
                 }
             }
@@ -155,7 +153,7 @@ namespace Uruk.Client.FunctionalTests
             return descriptor;
         }
 
-        private static IHostBuilder CreateHostBuilder(HttpResponseMessage? response = null, Exception? exception = null)
+        private IHostBuilder CreateHostBuilder(HttpResponseMessage? response = null, Exception? exception = null)
         {
             var handler = response != null ? new TestHttpMessageHandler(response) : new TestHttpMessageHandler(exception);
             return Host.CreateDefaultBuilder()
@@ -166,6 +164,7 @@ namespace Uruk.Client.FunctionalTests
                         {
                             o.DeliveryEndpoint = "https://example.com/events/";
                             o.StorageEncryptionKey = new SymmetricJwk(new byte[32]);
+                            o.StoragePath = _directory;
                         })
                         .ConfigurePrimaryHttpMessageHandler(() => handler)
                         .ConfigureHttpClient(builder =>
