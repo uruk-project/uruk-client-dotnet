@@ -129,17 +129,17 @@ namespace Uruk.Client
                 Environment.NewLine + Encoding.UTF8.GetString(errorMessage));
         }
 
-        internal static AuditTrailPushResponse Warning(Exception exception)
+        internal static AuditTrailPushResponse ShouldRetry(Exception exception)
         {
-            return new AuditTrailPushResponse(EventTransmissionStatus.Warning)
+            return new AuditTrailPushResponse(EventTransmissionStatus.ShouldRetry)
             {
                 Exception = exception
             };
         }
 
-        internal static AuditTrailPushResponse Warning(HttpStatusCode statusCode)
+        internal static AuditTrailPushResponse ShouldRetry(HttpStatusCode statusCode)
         {
-            return new AuditTrailPushResponse(EventTransmissionStatus.Warning, statusCode);
+            return new AuditTrailPushResponse(EventTransmissionStatus.ShouldRetry, statusCode);
         }
 
         public static AuditTrailPushResponse Success(HttpStatusCode statusCode)
@@ -182,6 +182,14 @@ namespace Uruk.Client
                 Exception = exception
             };
         }
+        
+        public static AuditTrailPushResponse TokenAcquisitionFailure(Exception exception)
+        {
+            return new AuditTrailPushResponse(EventTransmissionStatus.TokenAcquisitionError)
+            {
+                Exception = exception
+            };
+        }
 
         public static AuditTrailPushResponse ErrorFailure(HttpStatusCode statusCode, string body, string error, string? description = null)
         {
@@ -192,9 +200,9 @@ namespace Uruk.Client
             };
         }
 
-        public static AuditTrailPushResponse Warning(HttpStatusCode statusCode, string body, string error, string? description = null)
+        public static AuditTrailPushResponse ShouldRetry(HttpStatusCode statusCode, string body, string error, string? description = null)
         {
-            return new AuditTrailPushResponse(EventTransmissionStatus.Warning, statusCode, body)
+            return new AuditTrailPushResponse(EventTransmissionStatus.ShouldRetry, statusCode, body)
             {
                 Error = error,
                 ErrorDescription = description

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -9,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using JsonWebToken;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Xunit;
 
@@ -112,7 +112,7 @@ namespace Uruk.Client.FunctionalTests
             var descriptor = CreateDescriptor();
             var result = await client.SendAuditTrailAsync(descriptor);
 
-            Assert.Equal(EventTransmissionStatus.Warning, result.Status);
+            Assert.Equal(EventTransmissionStatus.ShouldRetry, result.Status);
             Assert.Null(result.Error);
             Assert.Null(result.ErrorDescription);
 
@@ -159,6 +159,11 @@ namespace Uruk.Client.FunctionalTests
         private static IHostBuilder CreateHostBuilder(HttpResponseMessage? response = null, Exception? exception = null)
         {
             var handler = response != null ? new TestHttpMessageHandler(response) : new TestHttpMessageHandler(exception);
+            return CreateHostBuilder(handler);
+        }
+
+        private static IHostBuilder CreateHostBuilder(TestHttpMessageHandler handler)
+        {
             return Host.CreateDefaultBuilder()
                 .ConfigureServices((hostContext, services) =>
                 {
@@ -166,13 +171,22 @@ namespace Uruk.Client.FunctionalTests
                         .AddAuditTrailClient(o =>
                         {
                             o.DeliveryEndpoint = "https://example.com/events/";
-                            o.StorageEncryptionKey = new SymmetricJwk(new byte[32]);
+                            o.TemporaryStorageEncryptionKey = new SymmetricJwk(new byte[32]);
                         })
                         .ConfigurePrimaryHttpMessageHandler(() => handler)
                         .ConfigureHttpClient(builder =>
                         {
                         });
+                    services.Replace(new ServiceDescriptor(typeof(IAccessTokenAcquirer), typeof(NullTokenAcquirer), ServiceLifetime.Singleton));
                 });
+        }
+
+        private class NullTokenAcquirer : IAccessTokenAcquirer
+        {
+            public Task<string?> AcquireAccessTokenAsync(CancellationToken cancellationToken = default)
+            {
+                return Task.FromResult((string?)null);
+            }
         }
 
         private class TestHttpMessageHandler : HttpMessageHandler
