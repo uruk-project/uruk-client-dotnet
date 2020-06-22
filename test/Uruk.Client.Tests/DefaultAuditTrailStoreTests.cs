@@ -57,8 +57,8 @@ namespace Uruk.Client.Tests
         {
             return new DefaultAuditTrailStore(Options.Create(new AuditTrailClientOptions
             {
-                StorageEncryptionKey = new SymmetricJwk(new byte[32]),
-                StoragePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), path)
+                TemporaryStorageEncryptionKey = new SymmetricJwk(new byte[32]),
+                TemporaryStoragePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), path)
             }), new TestLogger<DefaultAuditTrailStore>());
         }
 

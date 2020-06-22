@@ -7,6 +7,7 @@ using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using IdentityModel.Client;
 using JsonWebToken;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
@@ -18,40 +19,32 @@ namespace Uruk.Client.Tests
 {
     public class AuditTrailClientTests
     {
-        private static AuditTrailClient CreateClient(HttpMessageHandler handler, bool tokenSinkResult = true, IAuditTrailStore? store = null, IHostEnvironment? env = null)
+        [Fact]
+        public void Ctor()
         {
-            var options = new AuditTrailClientOptions { DeliveryEndpoint = "https://uruk.example.com/events" };
-            return new AuditTrailClient(new HttpClient(handler), Options.Create(options), new TestTokenSink(tokenSinkResult), store ?? new TestTokenStore(), new TestLogger<AuditTrailClient>(), env);
-        }
+            var httpClient = new HttpClient();
+            var options = Options.Create(new AuditTrailClientOptions { DeliveryEndpoint = "https://example.com" });
+            var tokenClientOptions = options.Value.TokenClientOptions;
+            var sink = new TestTokenSink(true);
+            var store = new TestTokenStore();
+            var tokenAcquisitor = new DefaultAccessTokenAcquisitor(new TestLogger<DefaultAccessTokenAcquisitor>(), new TokenClient(httpClient, options.Value.TokenClientOptions), options);
+            var logger = new TestLogger<AuditTrailClient>();
+            var env = new TestHostEnvironment();
 
-        private class TestTokenSink : IAuditTrailSink
-        {
-            private readonly bool _success;
+            var client = new AuditTrailClient("https://example.com", "api", tokenClientOptions);
+            client = new AuditTrailClient(httpClient, options, sink, store, logger, tokenAcquisitor, env);
+            client = new AuditTrailClient(httpClient, options, sink, store, logger, tokenAcquisitor);
 
-            public TestTokenSink(bool success)
-            {
-                _success = success;
-            }
-
-            public Task Stop(CancellationToken cancellationToken)
-            {
-                throw new NotImplementedException();
-            }
-
-            public bool TryRead(out Token token)
-            {
-                throw new NotImplementedException();
-            }
-
-            public bool TryWrite(Token token)
-            {
-                return _success;
-            }
-
-            public ValueTask<bool> WaitToReadAsync(CancellationToken cancellationToken)
-            {
-                throw new NotImplementedException();
-            }
+            Assert.Throws<ArgumentNullException>("eventEndpoint", () => new AuditTrailClient(null!, "api", tokenClientOptions));
+            Assert.Throws<ArgumentNullException>("scope", () => new AuditTrailClient("https://example.com", null!, tokenClientOptions));
+            Assert.Throws<ArgumentNullException>("tokenClientOptions", () => new AuditTrailClient("https://example.com", "api", null!));
+            Assert.Throws<ArgumentNullException>("httpClient", () => new AuditTrailClient(null!, options, sink, store, logger, tokenAcquisitor, env));
+            Assert.Throws<ArgumentNullException>("options", () => new AuditTrailClient(httpClient, null!, sink, store, logger, tokenAcquisitor, env));
+            Assert.Throws<ArgumentNullException>("sink", () => new AuditTrailClient(httpClient, options, null!, store, logger, tokenAcquisitor, env));
+            Assert.Throws<ArgumentNullException>("store", () => new AuditTrailClient(httpClient, options, sink, null!, logger, tokenAcquisitor, env));
+            Assert.Throws<ArgumentNullException>("logger", () => new AuditTrailClient(httpClient, options, sink, store, null!, tokenAcquisitor, env));
+            Assert.Throws<ArgumentNullException>("tokenAcquisitor", () => new AuditTrailClient(httpClient, options, sink, store, logger, null!, env));
+            Assert.Throws<ArgumentException>("options", () => new AuditTrailClient(httpClient, Options.Create(new AuditTrailClientOptions()), sink, store, logger, tokenAcquisitor, env));
         }
 
         [Fact]
@@ -195,11 +188,11 @@ namespace Uruk.Client.Tests
         {
             var store = new TestTokenStore();
             var response1 = new HttpResponseMessage { Content = new FailingHttpContent(exceptionType) };
-            var httpClient = CreateClient(new TestHttpMessageHandler(response1), tokenSinkResult: true, store, new TestHostEnvironment());
+            var httpClient = CreateClient(new TestHttpMessageHandler(response1), tokenSinkResult: true, store: store, env: new TestHostEnvironment());
             var request = CreateDescriptor();
             var response = await httpClient.SendAuditTrailAsync(request);
 
-            Assert.Equal(EventTransmissionStatus.Warning, response.Status);
+            Assert.Equal(EventTransmissionStatus.ShouldRetry, response.Status);
             Assert.IsType(exceptionType, response.Exception);
             Assert.Equal(1, store.RecordedCount);
         }
@@ -211,7 +204,7 @@ namespace Uruk.Client.Tests
         {
             var store = new TestTokenStore();
             var response1 = new HttpResponseMessage { Content = new FailingHttpContent(exceptionType) };
-            var httpClient = CreateClient(new TestHttpMessageHandler(response1), tokenSinkResult: true, store);
+            var httpClient = CreateClient(new TestHttpMessageHandler(response1), tokenSinkResult: true, store: store);
             var request = CreateDescriptor();
             var response = await httpClient.SendAuditTrailAsync(request);
 
@@ -226,7 +219,7 @@ namespace Uruk.Client.Tests
         public async Task SendAsync_Retriable_Hosted_ErrorCaptureException(Type exceptionType)
         {
             var store = new TestTokenStore();
-            var httpClient = CreateClient(new FailingHttpMessageHandler((Exception)Activator.CreateInstance(exceptionType)!), false, store, new TestHostEnvironment());
+            var httpClient = CreateClient(new FailingHttpMessageHandler((Exception)Activator.CreateInstance(exceptionType)!), tokenSinkResult: false, store: store, env: new TestHostEnvironment());
             var request = CreateDescriptor();
             var response = await httpClient.SendAuditTrailAsync(request);
 
@@ -245,7 +238,7 @@ namespace Uruk.Client.Tests
         public async Task SendAsync_Retriable_NotHosted_ErrorCaptureException(Type exceptionType)
         {
             var store = new TestTokenStore();
-            var httpClient = CreateClient(new FailingHttpMessageHandler((Exception)Activator.CreateInstance(exceptionType)!), false, store, env: null);
+            var httpClient = CreateClient(new FailingHttpMessageHandler((Exception)Activator.CreateInstance(exceptionType)!), tokenSinkResult: false, store: store, env: null);
             var request = CreateDescriptor();
             var response = await httpClient.SendAuditTrailAsync(request);
 
@@ -275,6 +268,68 @@ namespace Uruk.Client.Tests
             Assert.IsType(exceptionType, response.Exception);
 
             Assert.Equal(0, store.RecordedCount);
+        }
+
+        private static AuditTrailClient CreateClient(HttpMessageHandler handler, HttpMessageHandler? tokenHandler = null, bool tokenSinkResult = true, IAuditTrailStore? store = null, IHostEnvironment? env = null)
+        {
+            var options = new AuditTrailClientOptions { DeliveryEndpoint = "https://uruk.example.com/events" };
+            HttpClient httpClient = new HttpClient(handler);
+            HttpClient tokenHttpClient = new HttpClient(tokenHandler ?? new TestHttpMessageHandler(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(@"{
+                   ""access_token"":""2YotnFZFEjr1zCsicMWpAA"",
+                   ""token_type"":""example"",
+                   ""expires_in"":3600,
+                   ""refresh_token"":""tGzv3JOkF0XG5Qx2TlKWIA"",
+                }"),
+            }));
+            return new AuditTrailClient(
+                httpClient,
+                Options.Create(options),
+                new TestTokenSink(tokenSinkResult),
+                store ?? new TestTokenStore(),
+                new TestLogger<AuditTrailClient>(),
+                new NullAccessTokenAcquisitor(),
+                env); ;
+        }
+
+        private sealed class NullAccessTokenAcquisitor : IAccessTokenAcquisitor
+        {
+            public Task<string?> AcquireAccessTokenAsync(CancellationToken cancellationToken = default)
+            {
+                return Task.FromResult<string?>(string.Empty);
+            }
+        }
+
+        private class TestTokenSink : IAuditTrailSink
+        {
+            private readonly bool _success;
+
+            public TestTokenSink(bool success)
+            {
+                _success = success;
+            }
+
+            public Task Stop(CancellationToken cancellationToken)
+            {
+                return Task.CompletedTask;
+            }
+
+            public bool TryRead(out Token token)
+            {
+                token = default;
+                return _success;
+            }
+
+            public bool TryWrite(Token token)
+            {
+                return _success;
+            }
+
+            public ValueTask<bool> WaitToReadAsync(CancellationToken cancellationToken)
+            {
+                return new ValueTask<bool>(_success);
+            }
         }
 
         private static SecurityEventTokenDescriptor CreateDescriptor()
@@ -368,8 +423,6 @@ namespace Uruk.Client.Tests
             }
         }
 
-
-
         private class TestTokenStore : IAuditTrailStore
         {
             public int RecordedCount { get; set; }
@@ -390,7 +443,6 @@ namespace Uruk.Client.Tests
                 return Task.FromResult<string>(string.Empty);
             }
         }
-
         private class TestHostEnvironment : IHostEnvironment
         {
             public string EnvironmentName { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }

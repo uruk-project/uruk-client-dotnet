@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
+using IdentityModel.Client;
 using JsonWebToken;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -14,23 +15,35 @@ namespace Uruk.Client
 {
     public class AuditTrailClient : IAuditTrailClient
     {
+        private static readonly MediaTypeHeaderValue _contentTypeHeader = new MediaTypeHeaderValue("application/secevent+jwt");
+        private static readonly MediaTypeWithQualityHeaderValue _acceptHeader = new MediaTypeWithQualityHeaderValue("application/json");
+
         private readonly HttpClient _httpClient;
         private readonly AuditTrailClientOptions _options;
         private readonly IAuditTrailSink _sink;
         private readonly ILogger<AuditTrailClient> _logger;
+        private readonly IAccessTokenAcquisitor _tokenAcquisitor;
         private readonly IHostEnvironment? _env;
         private readonly JwtWriter _writer;
         private readonly IAuditTrailStore _store;
 
-        public AuditTrailClient(HttpClient httpClient, IOptions<AuditTrailClientOptions> options, IAuditTrailSink sink, IAuditTrailStore store, ILogger<AuditTrailClient> logger, IHostEnvironment? env = null)
+        private string? _accessToken;
+
+        public AuditTrailClient(HttpClient httpClient, IOptions<AuditTrailClientOptions> options, IAuditTrailSink sink, IAuditTrailStore store, ILogger<AuditTrailClient> logger, IAccessTokenAcquisitor tokenAcquisitor, IHostEnvironment? env = null)
         {
+            if (options is null)
+            {
+                throw new ArgumentNullException(nameof(options));
+            }
+
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
             _sink = sink ?? throw new ArgumentNullException(nameof(sink));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _tokenAcquisitor = tokenAcquisitor ?? throw new ArgumentNullException(nameof(tokenAcquisitor));
             _store = store ?? throw new ArgumentNullException(nameof(store));
             _env = env;
             _options = options.Value;
-            if (options.Value.DeliveryEndpoint is null)
+            if (_options.DeliveryEndpoint is null)
             {
                 throw new ArgumentException("The delivery endpoint is not defined.", nameof(options));
             }
@@ -42,22 +55,38 @@ namespace Uruk.Client
         /// 
         /// </summary>
         /// <param name="eventEndpoint"></param>
-        public AuditTrailClient(string eventEndpoint)
+        public AuditTrailClient(string eventEndpoint, string scope, TokenClientOptions tokenClientOptions)
         {
             if (eventEndpoint is null)
             {
                 throw new ArgumentNullException(nameof(eventEndpoint));
             }
 
+            if (scope is null)
+            {
+                throw new ArgumentNullException(nameof(scope));
+            }
+
+            if (tokenClientOptions is null)
+            {
+                throw new ArgumentNullException(nameof(tokenClientOptions));
+            }
+
             _httpClient = new HttpClient();
             _sink = new NullSink();
-            _logger = new ConsoleLogger();
+            _logger = new ConsoleLogger<AuditTrailClient>();
             _writer = new JwtWriter();
             _store = new NullStore();
             _options = new AuditTrailClientOptions
             {
-                DeliveryEndpoint = eventEndpoint
+                DeliveryEndpoint = eventEndpoint,
+                AccessTokenScope = scope,
+                TokenClientOptions = tokenClientOptions
             };
+            _tokenAcquisitor = new DefaultAccessTokenAcquisitor(
+                new ConsoleLogger<DefaultAccessTokenAcquisitor>(), 
+                new  TokenClient(new HttpClient(), tokenClientOptions),
+                Options.Create(_options));
         }
 
         public bool IsHosted => !(_env is null);
@@ -73,7 +102,7 @@ namespace Uruk.Client
                     _store.DeleteRecord(token);
                     break;
 
-                case EventTransmissionStatus.Warning when IsHosted:
+                case EventTransmissionStatus.ShouldRetry when IsHosted:
                     token.RetryCount++;
                     if (_sink.TryWrite(token))
                     {
@@ -86,7 +115,7 @@ namespace Uruk.Client
 
                     break;
 
-                case EventTransmissionStatus.Warning when IsHosted:
+                case EventTransmissionStatus.ShouldRetry when !IsHosted:
                     // If the application is not hosted, convert warning to error
                     result = AuditTrailPushResponse.Failure(result);
                     break;
@@ -106,7 +135,7 @@ namespace Uruk.Client
 #endif
             var result = await SendTokenAsync(content, cancellationToken);
 
-            if (result.Status == EventTransmissionStatus.Warning)
+            if (result.Status == EventTransmissionStatus.ShouldRetry)
             {
                 if (IsHosted)
                 {
@@ -142,7 +171,16 @@ namespace Uruk.Client
 
         private async Task<AuditTrailPushResponse> SendTokenAsync(HttpContent content, CancellationToken cancellationToken)
         {
-            using HttpRequestMessage request = CreateRequest(content);
+            try
+            {
+                _accessToken = await _tokenAcquisitor.AcquireAccessTokenAsync(cancellationToken);
+            }
+            catch (Exception exception)
+            {
+                return AuditTrailPushResponse.TokenAcquisitionFailure(exception);
+            }
+
+            using HttpRequestMessage request = CreateRequest(content, _accessToken);
             HttpResponseMessage response;
             try
             {
@@ -150,11 +188,11 @@ namespace Uruk.Client
             }
             catch (OperationCanceledException exception)
             {
-                return AuditTrailPushResponse.Warning(exception);
+                return AuditTrailPushResponse.ShouldRetry(exception);
             }
             catch (HttpRequestException exception)
             {
-                return AuditTrailPushResponse.Warning(exception);
+                return AuditTrailPushResponse.ShouldRetry(exception);
             }
             catch (Exception exception)
             {
@@ -163,20 +201,25 @@ namespace Uruk.Client
 
             if (response.StatusCode == HttpStatusCode.RequestTimeout || ((int)response.StatusCode >= 500) && ((int)response.StatusCode <= 599))
             {
-                return AuditTrailPushResponse.Warning(response.StatusCode);
+                return AuditTrailPushResponse.ShouldRetry(response.StatusCode);
             }
 
             return await AuditTrailPushResponse.FromHttpResponseAsync(response);
         }
 
-        private HttpRequestMessage CreateRequest(HttpContent content)
+        private HttpRequestMessage CreateRequest(HttpContent content, string? token)
         {
             var request = new HttpRequestMessage(HttpMethod.Post, _options.DeliveryEndpoint)
             {
                 Content = content,
             };
-            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/secevent+jwt");
-            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            request.Content.Headers.ContentType = _contentTypeHeader;
+            request.Headers.Accept.Add(_acceptHeader);
+            if (token != null)
+            {
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            }
+
             return request;
         }
 
@@ -204,7 +247,7 @@ namespace Uruk.Client
             }
         }
 
-        private class ConsoleLogger : ILogger<AuditTrailClient>
+        private class ConsoleLogger<TCategoryName> : ILogger<TCategoryName>
         {
             public IDisposable BeginScope<TState>(TState state)
             {

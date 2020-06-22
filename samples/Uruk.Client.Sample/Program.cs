@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using IdentityModel.Client;
 using JsonWebToken;
 
 namespace Uruk.Client
@@ -9,7 +10,7 @@ namespace Uruk.Client
     {
         static async Task Main()
         {
-            var client = new AuditTrailClient("https://example.com");
+            var client = new AuditTrailClient("https://example.com", "api", new TokenClientOptions {  });
 
             var descriptor = new SecurityEventTokenDescriptor()
             {

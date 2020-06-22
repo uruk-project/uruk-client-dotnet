@@ -1,6 +1,8 @@
 ﻿using System;
+using IdentityModel.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 
 namespace Uruk.Client
 {
@@ -20,8 +22,8 @@ namespace Uruk.Client
         /// </remarks>
         /// <param name="services">The <see cref="IServiceCollection"/> to add the <see cref="EventReceiverService"/> to.</param>
         /// <param name="audience">The audience.</param>
-        /// <returns>An instance of <see cref="IEventReceiverBuilder"/> from which event receiver can be registered.</returns>
-        public static IHttpClientBuilder AddAuditTrailClient(this IServiceCollection services)
+        /// <returns>An instance of <see cref="IHttpClientBuilder"/> from which event receiver can be registered.</returns>
+        private static IHttpClientBuilder AddAuditTrailClient(this IServiceCollection services)
         {
             if (services is null)
             {
@@ -32,8 +34,11 @@ namespace Uruk.Client
             services.AddHostedService<AuditTrailRecoveryService>();
             services.TryAddSingleton<IAuditTrailSink, DefaultAuditTrailSink>();
             services.TryAddSingleton<IAuditTrailStore, DefaultAuditTrailStore>();
+            services.TryAddSingleton<IAccessTokenAcquisitor, DefaultAccessTokenAcquisitor>();
 
             services.AddOptions<AuditTrailClientOptions>();
+            services.AddHttpClient<TokenClient>();
+
             return services.AddHttpClient<IAuditTrailClient, AuditTrailClient>();
         }
 

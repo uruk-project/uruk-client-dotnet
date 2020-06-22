@@ -3,7 +3,8 @@
     public enum EventTransmissionStatus
     {
         Success,
+        TokenAcquisitionError,
         Error,
-        Warning
+        ShouldRetry
     }
 }
