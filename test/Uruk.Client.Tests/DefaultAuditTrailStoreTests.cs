@@ -12,7 +12,7 @@ using Xunit;
 
 namespace Uruk.Client.Tests
 {
-    public class DefaultAccessTokenAcquisitorTests
+    public class DefaultAccessTokenAcquirerTests
     {
         [Fact]
         public async Task AcquireAccessToken_Success()
@@ -27,8 +27,8 @@ namespace Uruk.Client.Tests
                 }")
             })), new TokenClientOptions() { Address = "https://example.com" });
 
-            var acquisitor = new DefaultAccessTokenAcquisitor(new TestLogger<DefaultAccessTokenAcquisitor>(), tokenClient, Options.Create(new AuditTrailClientOptions()));
-            var token = await acquisitor.AcquireAccessTokenAsync();
+            var acquirer = new DefaultAccessTokenAcquirer(new TestLogger<DefaultAccessTokenAcquirer>(), tokenClient, Options.Create(new AuditTrailClientOptions()));
+            var token = await acquirer.AcquireAccessTokenAsync();
 
             Assert.Equal("2YotnFZFEjr1zCsicMWpAA", token);
         }
@@ -46,9 +46,9 @@ namespace Uruk.Client.Tests
                 }")
             })), new TokenClientOptions() { Address = "https://example.com" });
 
-            var acquisitor = new DefaultAccessTokenAcquisitor(new TestLogger<DefaultAccessTokenAcquisitor>(), tokenClient, Options.Create(new AuditTrailClientOptions()));
-            await acquisitor.AcquireAccessTokenAsync();
-            var token = await acquisitor.AcquireAccessTokenAsync();
+            var acquirer = new DefaultAccessTokenAcquirer(new TestLogger<DefaultAccessTokenAcquirer>(), tokenClient, Options.Create(new AuditTrailClientOptions()));
+            await acquirer.AcquireAccessTokenAsync();
+            var token = await acquirer.AcquireAccessTokenAsync();
 
             // May also assert the http client is not used
             Assert.Equal("2YotnFZFEjr1zCsicMWpAA", token);
@@ -62,9 +62,9 @@ namespace Uruk.Client.Tests
                 Content = new FailingHttpContent(typeof(HttpRequestException))
             })), new TokenClientOptions() { Address = "https://example.com" });
 
-            var acquisitor = new DefaultAccessTokenAcquisitor(new TestLogger<DefaultAccessTokenAcquisitor>(), tokenClient, Options.Create(new AuditTrailClientOptions()));
+            var acquirer = new DefaultAccessTokenAcquirer(new TestLogger<DefaultAccessTokenAcquirer>(), tokenClient, Options.Create(new AuditTrailClientOptions()));
 
-            await Assert.ThrowsAsync<HttpRequestException>(() => acquisitor.AcquireAccessTokenAsync());
+            await Assert.ThrowsAsync<HttpRequestException>(() => acquirer.AcquireAccessTokenAsync());
         }
 
         [Fact]
@@ -77,9 +77,9 @@ namespace Uruk.Client.Tests
                 }")
             })), new TokenClientOptions() { Address = "https://example.com" });
 
-            var acquisitor = new DefaultAccessTokenAcquisitor(new TestLogger<DefaultAccessTokenAcquisitor>(), tokenClient, Options.Create(new AuditTrailClientOptions()));
+            var acquirer = new DefaultAccessTokenAcquirer(new TestLogger<DefaultAccessTokenAcquirer>(), tokenClient, Options.Create(new AuditTrailClientOptions()));
 
-            await Assert.ThrowsAsync<HttpRequestException>(() => acquisitor.AcquireAccessTokenAsync());
+            await Assert.ThrowsAsync<HttpRequestException>(() => acquirer.AcquireAccessTokenAsync());
         }
     }
 

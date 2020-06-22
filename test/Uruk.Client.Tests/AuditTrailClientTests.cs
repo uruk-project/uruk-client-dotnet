@@ -27,24 +27,24 @@ namespace Uruk.Client.Tests
             var tokenClientOptions = options.Value.TokenClientOptions;
             var sink = new TestTokenSink(true);
             var store = new TestTokenStore();
-            var tokenAcquisitor = new DefaultAccessTokenAcquisitor(new TestLogger<DefaultAccessTokenAcquisitor>(), new TokenClient(httpClient, options.Value.TokenClientOptions), options);
+            var tokenAcquirer = new DefaultAccessTokenAcquirer(new TestLogger<DefaultAccessTokenAcquirer>(), new TokenClient(httpClient, options.Value.TokenClientOptions), options);
             var logger = new TestLogger<AuditTrailClient>();
             var env = new TestHostEnvironment();
 
             var client = new AuditTrailClient("https://example.com", "api", tokenClientOptions);
-            client = new AuditTrailClient(httpClient, options, sink, store, logger, tokenAcquisitor, env);
-            client = new AuditTrailClient(httpClient, options, sink, store, logger, tokenAcquisitor);
+            client = new AuditTrailClient(httpClient, options, sink, store, logger, tokenAcquirer, env);
+            client = new AuditTrailClient(httpClient, options, sink, store, logger, tokenAcquirer);
 
             Assert.Throws<ArgumentNullException>("eventEndpoint", () => new AuditTrailClient(null!, "api", tokenClientOptions));
             Assert.Throws<ArgumentNullException>("scope", () => new AuditTrailClient("https://example.com", null!, tokenClientOptions));
             Assert.Throws<ArgumentNullException>("tokenClientOptions", () => new AuditTrailClient("https://example.com", "api", null!));
-            Assert.Throws<ArgumentNullException>("httpClient", () => new AuditTrailClient(null!, options, sink, store, logger, tokenAcquisitor, env));
-            Assert.Throws<ArgumentNullException>("options", () => new AuditTrailClient(httpClient, null!, sink, store, logger, tokenAcquisitor, env));
-            Assert.Throws<ArgumentNullException>("sink", () => new AuditTrailClient(httpClient, options, null!, store, logger, tokenAcquisitor, env));
-            Assert.Throws<ArgumentNullException>("store", () => new AuditTrailClient(httpClient, options, sink, null!, logger, tokenAcquisitor, env));
-            Assert.Throws<ArgumentNullException>("logger", () => new AuditTrailClient(httpClient, options, sink, store, null!, tokenAcquisitor, env));
-            Assert.Throws<ArgumentNullException>("tokenAcquisitor", () => new AuditTrailClient(httpClient, options, sink, store, logger, null!, env));
-            Assert.Throws<ArgumentException>("options", () => new AuditTrailClient(httpClient, Options.Create(new AuditTrailClientOptions()), sink, store, logger, tokenAcquisitor, env));
+            Assert.Throws<ArgumentNullException>("httpClient", () => new AuditTrailClient(null!, options, sink, store, logger, tokenAcquirer, env));
+            Assert.Throws<ArgumentNullException>("options", () => new AuditTrailClient(httpClient, null!, sink, store, logger, tokenAcquirer, env));
+            Assert.Throws<ArgumentNullException>("sink", () => new AuditTrailClient(httpClient, options, null!, store, logger, tokenAcquirer, env));
+            Assert.Throws<ArgumentNullException>("store", () => new AuditTrailClient(httpClient, options, sink, null!, logger, tokenAcquirer, env));
+            Assert.Throws<ArgumentNullException>("logger", () => new AuditTrailClient(httpClient, options, sink, store, null!, tokenAcquirer, env));
+            Assert.Throws<ArgumentNullException>("tokenAcquirer", () => new AuditTrailClient(httpClient, options, sink, store, logger, null!, env));
+            Assert.Throws<ArgumentException>("options", () => new AuditTrailClient(httpClient, Options.Create(new AuditTrailClientOptions()), sink, store, logger, tokenAcquirer, env));
         }
 
         [Fact]
@@ -284,7 +284,7 @@ namespace Uruk.Client.Tests
                 env);
         }
 
-        private sealed class NullAccessTokenAcquisitor : IAccessTokenAcquisitor
+        private sealed class NullAccessTokenAcquisitor : IAccessTokenAcquirer
         {
             public Task<string?> AcquireAccessTokenAsync(CancellationToken cancellationToken = default)
             {

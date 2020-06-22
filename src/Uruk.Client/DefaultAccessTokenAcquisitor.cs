@@ -9,16 +9,16 @@ using Microsoft.Extensions.Options;
 
 namespace Uruk.Client
 {
-    public sealed class DefaultAccessTokenAcquisitor : IAccessTokenAcquisitor
+    public sealed class DefaultAccessTokenAcquirer : IAccessTokenAcquirer
     {
-        private readonly ILogger<DefaultAccessTokenAcquisitor> _logger;
+        private readonly ILogger<DefaultAccessTokenAcquirer> _logger;
         private readonly TokenClient _tokenClient;
         private readonly AuditTrailClientOptions _options;
 
         private string? _accessToken;
         private DateTime _accessTokenExpireAt = DateTime.MinValue;
 
-        public DefaultAccessTokenAcquisitor(ILogger<DefaultAccessTokenAcquisitor> logger, TokenClient? tokenClient, IOptions<AuditTrailClientOptions> options)
+        public DefaultAccessTokenAcquirer(ILogger<DefaultAccessTokenAcquirer> logger, TokenClient? tokenClient, IOptions<AuditTrailClientOptions> options)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _tokenClient = tokenClient ?? throw new ArgumentNullException(nameof(tokenClient));

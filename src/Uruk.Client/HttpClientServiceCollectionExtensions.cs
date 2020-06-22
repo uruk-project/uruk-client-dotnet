@@ -34,7 +34,7 @@ namespace Uruk.Client
             services.AddHostedService<AuditTrailRecoveryService>();
             services.TryAddSingleton<IAuditTrailSink, DefaultAuditTrailSink>();
             services.TryAddSingleton<IAuditTrailStore, DefaultAuditTrailStore>();
-            services.TryAddSingleton<IAccessTokenAcquisitor, DefaultAccessTokenAcquisitor>();
+            services.TryAddSingleton<IAccessTokenAcquirer, DefaultAccessTokenAcquirer>();
 
             services.AddOptions<AuditTrailClientOptions>();
             services.AddHttpClient<TokenClient>();

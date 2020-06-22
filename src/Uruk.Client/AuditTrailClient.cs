@@ -22,14 +22,14 @@ namespace Uruk.Client
         private readonly AuditTrailClientOptions _options;
         private readonly IAuditTrailSink _sink;
         private readonly ILogger<AuditTrailClient> _logger;
-        private readonly IAccessTokenAcquisitor _tokenAcquisitor;
+        private readonly IAccessTokenAcquirer _accessTokenAcquirer;
         private readonly IHostEnvironment? _env;
         private readonly JwtWriter _writer;
         private readonly IAuditTrailStore _store;
 
         private string? _accessToken;
 
-        public AuditTrailClient(HttpClient httpClient, IOptions<AuditTrailClientOptions> options, IAuditTrailSink sink, IAuditTrailStore store, ILogger<AuditTrailClient> logger, IAccessTokenAcquisitor tokenAcquisitor, IHostEnvironment? env = null)
+        public AuditTrailClient(HttpClient httpClient, IOptions<AuditTrailClientOptions> options, IAuditTrailSink sink, IAuditTrailStore store, ILogger<AuditTrailClient> logger, IAccessTokenAcquirer tokenAcquirer, IHostEnvironment? env = null)
         {
             if (options is null)
             {
@@ -39,7 +39,7 @@ namespace Uruk.Client
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
             _sink = sink ?? throw new ArgumentNullException(nameof(sink));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _tokenAcquisitor = tokenAcquisitor ?? throw new ArgumentNullException(nameof(tokenAcquisitor));
+            _accessTokenAcquirer = tokenAcquirer ?? throw new ArgumentNullException(nameof(tokenAcquirer));
             _store = store ?? throw new ArgumentNullException(nameof(store));
             _env = env;
             _options = options.Value;
@@ -83,8 +83,8 @@ namespace Uruk.Client
                 AccessTokenScope = scope,
                 TokenClientOptions = tokenClientOptions
             };
-            _tokenAcquisitor = new DefaultAccessTokenAcquisitor(
-                new ConsoleLogger<DefaultAccessTokenAcquisitor>(), 
+            _accessTokenAcquirer = new DefaultAccessTokenAcquirer(
+                new ConsoleLogger<DefaultAccessTokenAcquirer>(), 
                 new  TokenClient(new HttpClient(), tokenClientOptions),
                 Options.Create(_options));
         }
@@ -173,7 +173,7 @@ namespace Uruk.Client
         {
             try
             {
-                _accessToken = await _tokenAcquisitor.AcquireAccessTokenAsync(cancellationToken);
+                _accessToken = await _accessTokenAcquirer.AcquireAccessTokenAsync(cancellationToken);
             }
             catch (Exception exception)
             {

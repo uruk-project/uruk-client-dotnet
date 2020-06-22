@@ -177,11 +177,11 @@ namespace Uruk.Client.FunctionalTests
                         .ConfigureHttpClient(builder =>
                         {
                         });
-                    services.Replace(new ServiceDescriptor(typeof(IAccessTokenAcquisitor), typeof(NullTokenAcquisitor), ServiceLifetime.Singleton));
+                    services.Replace(new ServiceDescriptor(typeof(IAccessTokenAcquirer), typeof(NullTokenAcquirer), ServiceLifetime.Singleton));
                 });
         }
 
-        private class NullTokenAcquisitor : IAccessTokenAcquisitor
+        private class NullTokenAcquirer : IAccessTokenAcquirer
         {
             public Task<string?> AcquireAccessTokenAsync(CancellationToken cancellationToken = default)
             {
