@@ -12,7 +12,7 @@ namespace Uruk.Client
         /// <summary>
         /// Gets or sets the URL to the delivery endpoint.
         /// </summary>
-        public string? DeliveryEndpoint { get; set; } 
+        public string? DeliveryEndpoint { get; set; }
 
         /// <summary>
         ///Gets or sets the inverval in seconds between each attempt to resend a stored audit trail.
@@ -35,8 +35,13 @@ namespace Uruk.Client
         public string? AccessTokenScope { get; set; }
 
         /// <summary>
+        /// Gets or sets the authorization scheme. The defautl value is "Bearer".
+        /// </summary>
+        public string AuthorizationScheme { get; set; } = "Bearer";
+
+        /// <summary>
         /// Gets or sets the options for acquiring an access token.
         /// </summary>
-        public TokenClientOptions TokenClientOptions { get; } = new TokenClientOptions();
-    }
+        public TokenClientOptions TokenClientOptions { get; internal set; } = new TokenClientOptions();
+}
 }

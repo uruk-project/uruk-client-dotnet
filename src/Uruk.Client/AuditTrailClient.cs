@@ -217,7 +217,7 @@ namespace Uruk.Client
             request.Headers.Accept.Add(_acceptHeader);
             if (token != null)
             {
-                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                request.Headers.Authorization = new AuthenticationHeaderValue(_options.AuthorizationScheme, token);
             }
 
             return request;
