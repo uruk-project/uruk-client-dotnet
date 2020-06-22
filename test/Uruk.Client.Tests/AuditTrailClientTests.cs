@@ -274,15 +274,6 @@ namespace Uruk.Client.Tests
         {
             var options = new AuditTrailClientOptions { DeliveryEndpoint = "https://uruk.example.com/events" };
             HttpClient httpClient = new HttpClient(handler);
-            HttpClient tokenHttpClient = new HttpClient(tokenHandler ?? new TestHttpMessageHandler(new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = new StringContent(@"{
-                   ""access_token"":""2YotnFZFEjr1zCsicMWpAA"",
-                   ""token_type"":""example"",
-                   ""expires_in"":3600,
-                   ""refresh_token"":""tGzv3JOkF0XG5Qx2TlKWIA"",
-                }"),
-            }));
             return new AuditTrailClient(
                 httpClient,
                 Options.Create(options),
@@ -290,7 +281,7 @@ namespace Uruk.Client.Tests
                 store ?? new TestTokenStore(),
                 new TestLogger<AuditTrailClient>(),
                 new NullAccessTokenAcquisitor(),
-                env); ;
+                env);
         }
 
         private sealed class NullAccessTokenAcquisitor : IAccessTokenAcquisitor
@@ -353,76 +344,6 @@ namespace Uruk.Client.Tests
             return descriptor;
         }
 
-        private class TestHttpMessageHandler : HttpMessageHandler
-        {
-            private readonly HttpResponseMessage _expectedResponse;
-
-            public TestHttpMessageHandler(HttpResponseMessage expectedResponse, bool setDefaultContentType = true)
-            {
-                _expectedResponse = expectedResponse;
-                if (_expectedResponse.Content is null)
-                {
-                    _expectedResponse.Content = new StringContent("");
-                }
-
-                if (setDefaultContentType)
-                {
-                    _expectedResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-                }
-            }
-
-            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-            {
-                var response = Task.FromResult(_expectedResponse);
-                return response;
-            }
-        }
-
-        private class FailingHttpMessageHandler : HttpMessageHandler
-        {
-            private readonly Exception _exception;
-
-            public FailingHttpMessageHandler(Exception exception)
-            {
-                _exception = exception;
-            }
-
-            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-            {
-                throw _exception;
-            }
-
-            protected override void Dispose(bool disposing)
-            {
-                base.Dispose(disposing);
-            }
-        }
-
-        private class FailingHttpContent : HttpContent
-        {
-            private readonly Type _type;
-
-            public FailingHttpContent(Type type)
-            {
-                _type = type;
-            }
-
-            protected override Task SerializeToStreamAsync(Stream stream, TransportContext context)
-            {
-                throw (Exception)Activator.CreateInstance(_type)!;
-            }
-
-            protected override bool TryComputeLength(out long length)
-            {
-                length = 0;
-                return true;
-            }
-
-            protected override void Dispose(bool disposing)
-            {
-            }
-        }
-
         private class TestTokenStore : IAuditTrailStore
         {
             public int RecordedCount { get; set; }
@@ -473,4 +394,75 @@ namespace Uruk.Client.Tests
         {
         }
     }
+
+    internal class TestHttpMessageHandler : HttpMessageHandler
+    {
+        private readonly HttpResponseMessage _expectedResponse;
+
+        public TestHttpMessageHandler(HttpResponseMessage expectedResponse, bool setDefaultContentType = true)
+        {
+            _expectedResponse = expectedResponse;
+            if (_expectedResponse.Content is null)
+            {
+                _expectedResponse.Content = new StringContent("");
+            }
+
+            if (setDefaultContentType)
+            {
+                _expectedResponse.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+            }
+        }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var response = Task.FromResult(_expectedResponse);
+            return response;
+        }
+    }
+
+    internal class FailingHttpMessageHandler : HttpMessageHandler
+    {
+        private readonly Exception _exception;
+
+        public FailingHttpMessageHandler(Exception exception)
+        {
+            _exception = exception;
+        }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            throw _exception;
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            base.Dispose(disposing);
+        }
+    }
+
+    internal class FailingHttpContent : HttpContent
+    {
+        private readonly Type _type;
+
+        public FailingHttpContent(Type type)
+        {
+            _type = type;
+        }
+
+        protected override Task SerializeToStreamAsync(Stream stream, TransportContext context)
+        {
+            throw (Exception)Activator.CreateInstance(_type)!;
+        }
+
+        protected override bool TryComputeLength(out long length)
+        {
+            length = 0;
+            return true;
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+        }
+    }
+
 }

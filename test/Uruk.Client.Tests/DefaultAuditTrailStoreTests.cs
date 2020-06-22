@@ -2,13 +2,87 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
 using System.Threading.Tasks;
+using IdentityModel.Client;
 using JsonWebToken;
 using Microsoft.Extensions.Options;
 using Xunit;
 
 namespace Uruk.Client.Tests
 {
+    public class DefaultAccessTokenAcquisitorTests
+    {
+        [Fact]
+        public async Task AcquireAccessToken_Success()
+        {
+            var tokenClient = new TokenClient(new HttpClient(new TestHttpMessageHandler(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(@"{
+                   ""access_token"":""2YotnFZFEjr1zCsicMWpAA"",
+                   ""token_type"":""example"",
+                   ""expires_in"":3600,
+                   ""refresh_token"":""tGzv3JOkF0XG5Qx2TlKWIA"",
+                }")
+            })), new TokenClientOptions() { Address = "https://example.com" });
+
+            var acquisitor = new DefaultAccessTokenAcquisitor(new TestLogger<DefaultAccessTokenAcquisitor>(), tokenClient, Options.Create(new AuditTrailClientOptions()));
+            var token = await acquisitor.AcquireAccessTokenAsync();
+
+            Assert.Equal("2YotnFZFEjr1zCsicMWpAA", token);
+        }
+
+        [Fact]
+        public async Task AcquireAccessToken_Twice_Success()
+        {
+            var tokenClient = new TokenClient(new HttpClient(new TestHttpMessageHandler(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(@"{
+                   ""access_token"":""2YotnFZFEjr1zCsicMWpAA"",
+                   ""token_type"":""example"",
+                   ""expires_in"":3600,
+                   ""refresh_token"":""tGzv3JOkF0XG5Qx2TlKWIA""
+                }")
+            })), new TokenClientOptions() { Address = "https://example.com" });
+
+            var acquisitor = new DefaultAccessTokenAcquisitor(new TestLogger<DefaultAccessTokenAcquisitor>(), tokenClient, Options.Create(new AuditTrailClientOptions()));
+            await acquisitor.AcquireAccessTokenAsync();
+            var token = await acquisitor.AcquireAccessTokenAsync();
+
+            // May also assert the http client is not used
+            Assert.Equal("2YotnFZFEjr1zCsicMWpAA", token);
+        }
+
+        [Fact]
+        public async Task AcquireAccessToken_HttpError_Fail()
+        {
+            var tokenClient = new TokenClient(new HttpClient(new TestHttpMessageHandler(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new FailingHttpContent(typeof(HttpRequestException))
+            })), new TokenClientOptions() { Address = "https://example.com" });
+
+            var acquisitor = new DefaultAccessTokenAcquisitor(new TestLogger<DefaultAccessTokenAcquisitor>(), tokenClient, Options.Create(new AuditTrailClientOptions()));
+
+            await Assert.ThrowsAsync<HttpRequestException>(() => acquisitor.AcquireAccessTokenAsync());
+        }
+
+        [Fact]
+        public async Task AcquireAccessToken_ProtocolError_Fail()
+        {
+            var tokenClient = new TokenClient(new HttpClient(new TestHttpMessageHandler(new HttpResponseMessage(HttpStatusCode.BadRequest)
+            {
+                Content = new StringContent(@"{
+                   ""error"":""invalid_request""
+                }")
+            })), new TokenClientOptions() { Address = "https://example.com" });
+
+            var acquisitor = new DefaultAccessTokenAcquisitor(new TestLogger<DefaultAccessTokenAcquisitor>(), tokenClient, Options.Create(new AuditTrailClientOptions()));
+
+            await Assert.ThrowsAsync<HttpRequestException>(() => acquisitor.AcquireAccessTokenAsync());
+        }
+    }
+
     public class DefaultAuditTrailStoreTests : IDisposable
     {
         private readonly string _directory;
@@ -29,6 +103,7 @@ namespace Uruk.Client.Tests
             var finalFileCount = EnumerateFiles(path).Count();
 
             Assert.Equal(initialFileCount + 1, finalFileCount);
+
         }
 
         [Fact]

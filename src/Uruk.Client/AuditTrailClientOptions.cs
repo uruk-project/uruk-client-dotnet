@@ -35,7 +35,7 @@ namespace Uruk.Client
         public string? AccessTokenScope { get; set; }
 
         /// <summary>
-        /// Gets or sets the authorization scheme. The defautl value is "Bearer".
+        /// Gets or sets the authorization scheme. The default value is "Bearer".
         /// </summary>
         public string AuthorizationScheme { get; set; } = "Bearer";
 
