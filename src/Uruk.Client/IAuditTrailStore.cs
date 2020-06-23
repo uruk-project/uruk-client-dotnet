@@ -7,8 +7,8 @@ namespace Uruk.Client
     {
         Task<string> RecordAuditTrailAsync(byte[] token);
 
-        IEnumerable<Token> GetAllAuditTrailRecords();
+        IEnumerable<AuditTrailItem> GetAllAuditTrailRecords();
 
-        void DeleteRecord(Token token);
+        void DeleteRecord(AuditTrailItem token);
     }
 }

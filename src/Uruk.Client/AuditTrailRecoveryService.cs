@@ -17,6 +17,11 @@ namespace Uruk.Client
 
         public AuditTrailRecoveryService(IOptions<AuditTrailClientOptions> options, ILogger<AuditTrailRecoveryService> logger, IAuditTrailStore store, IAuditTrailSink sink)
         {
+            if (options is null)
+            {
+                throw new ArgumentNullException(nameof(options));
+            }
+
             _options = options.Value;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _store = store ?? throw new ArgumentNullException(nameof(store));
