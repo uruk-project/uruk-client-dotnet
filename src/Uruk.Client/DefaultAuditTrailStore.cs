@@ -18,7 +18,7 @@ namespace Uruk.Client
         private readonly SymmetricJwk? _encryptionKey;
         private readonly JwtWriter? _writer;
         private readonly JwtReader? _reader;
-        private readonly TokenValidationPolicy _policy;
+        private readonly TokenValidationPolicy? _policy;
         private readonly AuditTrailClientOptions _options;
         private readonly ILogger<DefaultAuditTrailStore> _logger;
         private readonly string _directory;
@@ -27,7 +27,7 @@ namespace Uruk.Client
         {
             _options = options.Value;
             _logger = logger;
-            if (_options.StoragePath is null)
+            if (_options.TemporaryStoragePath is null)
             {
                 const string auditTrailFallbackDir = "AUDITTRAIL_FALLBACK_DIR";
                 var root = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)
@@ -43,8 +43,7 @@ namespace Uruk.Client
             }
             else
             {
-                _directory = _options.StoragePath;
-
+                _directory = _options.TemporaryStoragePath;
             }
 
             try
@@ -63,21 +62,20 @@ namespace Uruk.Client
                 _logger.LogTrace(ex, "Failure occurred while attempting to detect docker.");
             }
 
-            if (_options.StorageEncryptionKey != null)
+            if (_options.TemporaryStorageEncryptionKey != null)
             {
-                _encryptionKey = _options.StorageEncryptionKey;
+                _encryptionKey = _options.TemporaryStorageEncryptionKey;
                 _writer = new JwtWriter();
                 _reader = new JwtReader(_encryptionKey);
+                _policy = new TokenValidationPolicyBuilder()
+                    .IgnoreNestedToken()
+                    .IgnoreSignature()
+                    .Build();
             }
             else
             {
                 _logger.LogWarning("No encryption key is defined. The audit trail will be stored in plaintext.");
             }
-
-            _policy = new TokenValidationPolicyBuilder()
-                .IgnoreNestedToken()
-                .IgnoreSignature()
-                .Build();
         }
 
         public IEnumerable<AuditTrailItem> GetAllAuditTrailRecords()
@@ -106,7 +104,7 @@ namespace Uruk.Client
                 }
                 else
                 {
-                    var result = _reader.TryReadToken(data, _policy);
+                    var result = _reader.TryReadToken(data, _policy!);
                     if (result.Succedeed)
                     {
                         return new AuditTrailItem(result.Token!.Binary!, filename, 0);
@@ -162,6 +160,7 @@ namespace Uruk.Client
                     await tempFileStream.WriteAsync(bufferWriter.WrittenMemory);
 #endif
                 }
+
                 _logger.WritingTokenToFile(finalFilename);
 
                 try
@@ -184,7 +183,14 @@ namespace Uruk.Client
 
         public void DeleteRecord(AuditTrailItem token)
         {
-            File.Delete(token.Filename);
+            try
+            {
+                File.Delete(token.Filename);
+            }
+            catch   (Exception exception)
+            {
+                _logger.LogWarning(exception, "File {filename} not found when trying to delete", token.Filename);
+            }
         }
     }
 }
