@@ -301,18 +301,18 @@ namespace Uruk.Client.Tests
                 _success = success;
             }
 
-            public Task Stop(CancellationToken cancellationToken)
+            public Task StopAsync(CancellationToken cancellationToken)
             {
                 return Task.CompletedTask;
             }
 
-            public bool TryRead(out Token token)
+            public bool TryRead(out AuditTrailItem token)
             {
                 token = default;
                 return _success;
             }
 
-            public bool TryWrite(Token token)
+            public bool TryWrite(AuditTrailItem token)
             {
                 return _success;
             }
@@ -348,12 +348,12 @@ namespace Uruk.Client.Tests
         {
             public int RecordedCount { get; set; }
 
-            public void DeleteRecord(Token token)
+            public void DeleteRecord(AuditTrailItem token)
             {
                 throw new NotImplementedException();
             }
 
-            public IEnumerable<Token> GetAllAuditTrailRecords()
+            public IEnumerable<AuditTrailItem> GetAllAuditTrailRecords()
             {
                 throw new NotImplementedException();
             }
@@ -364,7 +364,7 @@ namespace Uruk.Client.Tests
                 return Task.FromResult<string>(string.Empty);
             }
         }
-      
+
         private class TestHostEnvironment : IHostEnvironment
         {
             public string EnvironmentName { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
