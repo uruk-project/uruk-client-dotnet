@@ -6,7 +6,7 @@ namespace Uruk.Client
 {
     public interface IAuditTrailClient
     {
-        public Task<AuditTrailPushResponse> SendAuditTrailAsync(SecurityEventTokenDescriptor descriptor, CancellationToken cancellationToken = default);
+        public Task<AuditTrailPushResponse> SendAuditTrailAsync(SecEventDescriptor descriptor, CancellationToken cancellationToken = default);
   
         public Task<AuditTrailPushResponse> ResendAuditTrailAsync(AuditTrailItem token, CancellationToken cancellationToken = default);
     }

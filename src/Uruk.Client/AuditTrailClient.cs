@@ -84,8 +84,8 @@ namespace Uruk.Client
                 TokenClientOptions = tokenClientOptions
             };
             _accessTokenAcquirer = new DefaultAccessTokenAcquirer(
-                new ConsoleLogger<DefaultAccessTokenAcquirer>(), 
-                new  TokenClient(new HttpClient(), tokenClientOptions),
+                new ConsoleLogger<DefaultAccessTokenAcquirer>(),
+                new TokenClient(new HttpClient(), tokenClientOptions),
                 Options.Create(_options));
         }
 
@@ -124,7 +124,7 @@ namespace Uruk.Client
             return result;
         }
 
-        public async Task<AuditTrailPushResponse> SendAuditTrailAsync(SecurityEventTokenDescriptor descriptor, CancellationToken cancellationToken = default)
+        public async Task<AuditTrailPushResponse> SendAuditTrailAsync(SecEventDescriptor descriptor, CancellationToken cancellationToken = default)
         {
             using var bufferWriter = new PooledByteBufferWriter(1024);
             _writer.WriteToken(descriptor, bufferWriter);
@@ -199,7 +199,9 @@ namespace Uruk.Client
                 return AuditTrailPushResponse.Failure(exception);
             }
 
-            if (response.StatusCode == HttpStatusCode.RequestTimeout || ((int)response.StatusCode >= 500) && ((int)response.StatusCode <= 599))
+            if (response.StatusCode == HttpStatusCode.RequestTimeout 
+                || ((int)response.StatusCode >= 500) && ((int)response.StatusCode <= 599)
+                && response.StatusCode != HttpStatusCode.BadRequest)
             {
                 return AuditTrailPushResponse.ShouldRetry(response.StatusCode);
             }
@@ -245,6 +247,11 @@ namespace Uruk.Client
             {
                 return new ValueTask<bool>(Task.FromResult(true));
             }
+        }
+
+        private class ErrorResponse
+        {
+
         }
 
         private class ConsoleLogger<TCategoryName> : ILogger<TCategoryName>

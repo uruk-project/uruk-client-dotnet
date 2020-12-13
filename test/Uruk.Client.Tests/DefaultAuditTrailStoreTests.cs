@@ -103,13 +103,12 @@ namespace Uruk.Client.Tests
             var finalFileCount = EnumerateFiles(path).Count();
 
             Assert.Equal(initialFileCount + 1, finalFileCount);
-
         }
 
         [Fact]
         public void GetAllTokens_IterateAllTokenFiles()
         {
-            const string jwe = "eyJhbGciOiJkaXIiLCJlbmMiOiJBMTI4Q0JDLUhTMjU2IiwiemlwIjoiREVGIn0..WJyI8eJZEgsU890A34fKSg.UePAIdDFOnEVx-6TeLm-KQ.IzfCGcPMXwZRnU_NRlAfc-lW18s1w9UqPzAYto_21gw";
+            const string jwe = "eyJhbGciOiJkaXIiLCJlbmMiOiJBMTI4Q0JDLUhTMjU2Iiwia2lkIjoiOW5ueFZhUllvczZwd3lTWVpBTFdSTDY0ZmdHNUNNWDlObzN0QXFkNXVyVSIsInppcCI6IkRFRiIsInR5cCI6Im9jdGV0LXN0cmVhbSJ9..a9fewZPwWJUNRL2ozoANug.HhgEcLCnujkZ8oOW3OoOzvoa8KDWjX9orizEO6EE2x4QO7T2p-ZTxh6_Iq77FnspRPkQfNe1tvGkzf1VtanlK1yk9Wkz4xwlm497RUHVKDc.H8JzMRhFiixhjitl1HuoJw";
 
             string path = Path.Combine(_directory, nameof(GetAllTokens_IterateAllTokenFiles));
             Directory.CreateDirectory(path);
@@ -132,7 +131,7 @@ namespace Uruk.Client.Tests
         {
             return new DefaultAuditTrailStore(Options.Create(new AuditTrailClientOptions
             {
-                TemporaryStorageEncryptionKey = new SymmetricJwk(new byte[32]),
+                TemporaryStorageEncryptionKey = SymmetricJwk.FromByteArray(new byte[32]),
                 TemporaryStoragePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), path)
             }), new TestLogger<DefaultAuditTrailStore>());
         }

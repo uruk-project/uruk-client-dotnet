@@ -1,12 +1,14 @@
 ﻿using System;
 using System.Net;
+using JsonWebToken;
 using Microsoft.Extensions.Logging;
 
 internal static class LoggingExtensions
 {
     private static readonly Action<ILogger, string, Exception?> _usingEphemeralFileSystemLocationInContainer;
     private static readonly Action<ILogger, string, Exception?> _writingTokenToFile;
-    private static readonly Action<ILogger, string, Exception?> _readingTokenFileFailed;
+    private static readonly Action<ILogger, string, TokenValidationStatus, Exception?> _readingTokenFileFailed;
+    private static readonly Action<ILogger, string, Exception?> _readingTokenFileFailed2;
 
     private static readonly Action<ILogger, string, HttpStatusCode, Exception?> _sendingTokenFailed;
     private static readonly Action<ILogger, string, HttpStatusCode, Exception?> _sendingTokenFailedNoRetry;
@@ -25,7 +27,12 @@ internal static class LoggingExtensions
           logLevel: LogLevel.Information,
           formatString: "Writing token to file '{FileName}'.");
 
-        _readingTokenFileFailed = LoggerMessage.Define<string>(
+        _readingTokenFileFailed = LoggerMessage.Define<string, TokenValidationStatus>(
+          eventId: new EventId(3, "ReadingTokenFileFailed"),
+          logLevel: LogLevel.Warning,
+          formatString: "Reading token file '{FileName}' has failed: {Status}.");
+
+        _readingTokenFileFailed2 = LoggerMessage.Define<string>(
           eventId: new EventId(3, "ReadingTokenFileFailed"),
           logLevel: LogLevel.Warning,
           formatString: "Reading token file '{FileName}' has failed.");
@@ -61,9 +68,13 @@ internal static class LoggingExtensions
         _writingTokenToFile(logger, finalFilename, null);
     }
 
+    public static void ReadingTokenFileFailed(this ILogger logger, string filename, TokenValidationStatus status, Exception? e = null)
+    {
+        _readingTokenFileFailed(logger, filename, status, e);
+    }
     public static void ReadingTokenFileFailed(this ILogger logger, string filename, Exception? e = null)
     {
-        _readingTokenFileFailed(logger, filename, e);
+        _readingTokenFileFailed2(logger, filename, e);
     }
 
     public static void SendingTokenFailedNoRetry(this ILogger logger, string requestUri, HttpStatusCode? statusCode = null, Exception? exception = null)
