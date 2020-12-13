@@ -39,7 +39,7 @@ namespace Uruk.Client.Tests
             var service = new AuditTrailRecoveryService(Options.Create(options), new TestLogger<AuditTrailRecoveryService>(), store, sink);
 
             await service.StartAsync(default);
-            await Task.Delay(100);
+            await Task.Delay(2000);
             Assert.Equal(expectedCount, sink.Items.Count);
         }
 

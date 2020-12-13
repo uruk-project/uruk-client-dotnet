@@ -32,10 +32,18 @@ jobs:
       NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
     steps:
       - uses: actions/checkout@v1
-      - name: Setup .NET Core 3.1
+      - name: setup dotnet '2.2.x'
         uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: 3.1.201
+          dotnet-version: '2.2.x'
+      - name: Setup dotnet '3.1.x'
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: '3.1.x'
+      - name: Setup dotnet '5.x'
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: '5.0.x'
       - name: Restore Tool
         if: matrix.is-main
         run: dotnet tool restore

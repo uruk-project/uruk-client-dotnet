@@ -37,6 +37,7 @@ namespace Uruk.Client
             services.TryAddSingleton<IAccessTokenAcquirer, DefaultAccessTokenAcquirer>();
 
             services.AddOptions<AuditTrailClientOptions>();
+            services.AddTransient(sp => sp.GetRequiredService<IOptions<AuditTrailClientOptions>>().Value.TokenClientOptions);
             services.AddHttpClient<TokenClient>();
 
             return services.AddHttpClient<IAuditTrailClient, AuditTrailClient>();

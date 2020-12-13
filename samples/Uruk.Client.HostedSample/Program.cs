@@ -1,4 +1,3 @@
-using IdentityModel.Client;
 using JsonWebToken;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -22,9 +21,9 @@ namespace Uruk.Client.HostedSample
                         .AddAuditTrailClient(options =>
                         {
                             options.DeliveryEndpoint = "https://localhost:5001/events";
-                            options.TemporaryStorageEncryptionKey = new SymmetricJwk(new byte[32]);
+                            options.TemporaryStorageEncryptionKey = SymmetricJwk.FromByteArray(new byte[32]);
                             options.TokenClientOptions.Address = "https://demo.identityserver.io/connect/token";
-                            options.TokenClientOptions.ClientId = "client";
+                            options.TokenClientOptions.ClientId = "m2m";
                             options.TokenClientOptions.ClientSecret = "secret";
                         });
                 });

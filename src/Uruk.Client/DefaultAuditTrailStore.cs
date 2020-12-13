@@ -17,7 +17,6 @@ namespace Uruk.Client
 
         private readonly SymmetricJwk? _encryptionKey;
         private readonly JwtWriter? _writer;
-        private readonly JwtReader? _reader;
         private readonly TokenValidationPolicy? _policy;
         private readonly AuditTrailClientOptions _options;
         private readonly ILogger<DefaultAuditTrailStore> _logger;
@@ -66,10 +65,10 @@ namespace Uruk.Client
             {
                 _encryptionKey = _options.TemporaryStorageEncryptionKey;
                 _writer = new JwtWriter();
-                _reader = new JwtReader(_encryptionKey);
                 _policy = new TokenValidationPolicyBuilder()
                     .IgnoreNestedToken()
-                    .IgnoreSignature()
+                    .IgnoreSignatureByDefault()
+                    .WithDecryptionKey(_encryptionKey)
                     .Build();
             }
             else
@@ -98,20 +97,19 @@ namespace Uruk.Client
             try
             {
                 var data = File.ReadAllBytes(filename);
-                if (_reader is null)
+                if (_options.TemporaryStorageEncryptionKey is null)
                 {
                     return new AuditTrailItem(data, filename, 0);
                 }
                 else
                 {
-                    var result = _reader.TryReadToken(data, _policy!);
-                    if (result.Succedeed)
+                    if (Jwt.TryParse(data, _policy!, out var jwt))
                     {
-                        return new AuditTrailItem(result.Token!.Binary!, filename, 0);
+                        return new AuditTrailItem(jwt.RawValue.ToArray(), filename, 0);
                     }
                     else
                     {
-                        _logger.ReadingTokenFileFailed(filename);
+                        _logger.ReadingTokenFileFailed(filename, jwt.Error!.Status, jwt.Error.Exception);
                         return EmptyToken;
                     }
                 }
@@ -126,7 +124,7 @@ namespace Uruk.Client
         public async Task<string> RecordAuditTrailAsync(byte[] token)
         {
             int length = token.Length;
-            var bufferWriter = new PooledByteBufferWriter(length + 512);
+            using var bufferWriter = new PooledByteBufferWriter(length + 512);
             if (_writer is null)
             {
                 var buffer = bufferWriter.GetMemory(length);
@@ -135,12 +133,13 @@ namespace Uruk.Client
             }
             else
             {
-                JwtDescriptor descriptor = new BinaryJweDescriptor(token)
+                JwtDescriptor descriptor = new BinaryJweDescriptor(
+                    _encryptionKey!, 
+                    KeyManagementAlgorithm.Dir, 
+                    EncryptionAlgorithm.A128CbcHS256, 
+                    CompressionAlgorithm.Def)
                 {
-                    Algorithm = KeyManagementAlgorithm.Direct,
-                    EncryptionAlgorithm = EncryptionAlgorithm.Aes128CbcHmacSha256,
-                    CompressionAlgorithm = CompressionAlgorithm.Deflate,
-                    EncryptionKey = _encryptionKey!
+                   Payload = token
                 };
 
                 _writer.WriteToken(descriptor, bufferWriter);
